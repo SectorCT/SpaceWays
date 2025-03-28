@@ -124,8 +124,16 @@ function App() {
                 onClick={handleBackgroundClick}
             >
                 <Canvas camera={{ position: [0, 0, 100], fov: 45 }}>
-                    {/* Background stars */}
-                    <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+                    {/* Background stars - positioned far behind everything */}
+                    <Stars 
+                        radius={300} 
+                        depth={50} 
+                        count={5000} 
+                        factor={4} 
+                        saturation={0} 
+                        fade 
+                        speed={1}
+                    />
                     
                     {/* Celestial bodies */}
                     <CelestialBodyComponent 
