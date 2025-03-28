@@ -45,6 +45,22 @@ const exampleOrbit: Orbit = {
   epoch: new Date().toISOString(),
 };
 
+// Create a second wider orbit
+const secondOrbit: Orbit = {
+  name: "Second Orbit",
+  semi_major_axis: 150, // Wider than the first orbit
+  eccentricity: 0.1, // Less eccentric
+  inclination: 45, // Different inclination
+  raan: 45, // Different RAAN
+  arg_periapsis: 30, // Different argument of periapsis
+  true_anomaly: 0,
+  apoapsis: 165,
+  periapsis: 135,
+  orbital_period: 86400,
+  mean_motion: 0.0000729,
+  epoch: new Date().toISOString(),
+};
+
 function App() {
   return (
     <div
@@ -111,6 +127,7 @@ function App() {
 
           <CelestialBodyComponent body={earth} />
           <OrbitLine orbit={exampleOrbit} color="#00ff00" />
+          <OrbitLine orbit={secondOrbit} color="#ff00ff" dashed={true} />
           <OrbitControls
             enableDamping={true}
             dampingFactor={0.05}

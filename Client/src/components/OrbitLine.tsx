@@ -6,9 +6,20 @@ import * as THREE from 'three';
 interface OrbitLineProps {
     orbit: Orbit;
     color?: string;
+    dashed?: boolean;
+    dashScale?: number;
+    dashSize?: number;
+    gapSize?: number;
 }
 
-export function OrbitLine({ orbit, color = '#ffffff' }: OrbitLineProps) {
+export function OrbitLine({ 
+    orbit, 
+    color = '#ffffff', 
+    dashed = false,
+    dashScale = 2,
+    dashSize = 2,
+    gapSize = 2
+}: OrbitLineProps) {
     const points = useRef<THREE.Vector3[]>([]);
 
     // Generate points for the orbit
@@ -52,7 +63,10 @@ export function OrbitLine({ orbit, color = '#ffffff' }: OrbitLineProps) {
             points={points.current}
             color={color}
             lineWidth={1}
-            dashed={false}
+            dashed={dashed}
+            dashScale={dashScale}
+            dashSize={dashSize}
+            gapSize={gapSize}
         />
     );
 } 
