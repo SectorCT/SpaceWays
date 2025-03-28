@@ -1,6 +1,6 @@
 import { CelestialBody } from "./types/CelestialBody";
 
-function getOrbitalPosition(body: CelestialBody, currentTime: Date): { x: number; y: number; z: number } {
+export function getOrbitalPosition(body: CelestialBody, currentTime: Date): { x: number; y: number; z: number } {
     const { orbit } = body;
     const { semi_major_axis: a, eccentricity: e, inclination, raan, arg_periapsis, mean_motion, epoch } = orbit;
 
