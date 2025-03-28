@@ -1,7 +1,9 @@
 import { Canvas } from "@react-three/fiber";
 import { Stars, OrbitControls } from "@react-three/drei";
 import { CelestialBodyComponent } from "./components/CelestialBody";
+import { OrbitLine } from "./components/OrbitLine";
 import { CelestialBody } from "./types/CelestialBody";
+import { Orbit } from "./types/orbit";
 import "./App.css";
 
 // Create Earth celestial body
@@ -25,6 +27,22 @@ const earth: CelestialBody = {
   color: "#4287f5", // Blue color for Earth
   mass: 5.972e24, // Earth's mass in kg
   scale: 0.01, // Increased scale for better visibility
+};
+
+// Create an example orbit for visualization
+const exampleOrbit: Orbit = {
+  name: "Example Orbit",
+  semi_major_axis: 100, // Scaled down for visualization
+  eccentricity: 0.2,
+  inclination: 30,
+  raan: 0,
+  arg_periapsis: 0,
+  true_anomaly: 0,
+  apoapsis: 120,
+  periapsis: 80,
+  orbital_period: 86400,
+  mean_motion: 0.0000729,
+  epoch: new Date().toISOString(),
 };
 
 function App() {
@@ -70,11 +88,39 @@ function App() {
           height: "100%",
         }}
       >
-        <Canvas camera={{ position: [0, 0, 100], fov: 45 }}>
-          <ambientLight intensity={1} />
-          <pointLight position={[10, 10, 10]} intensity={1} />
+        <Canvas camera={{ position: [150, 150, 150], fov: 45 }}>
+          {/* Main ambient light for overall scene illumination */}
+          <ambientLight intensity={0.3} />
+
+          {/* Main directional light (simulating sunlight) */}
+          <directionalLight
+            position={[100, 100, 100]}
+            intensity={1}
+            castShadow={true}
+          />
+
+          {/* Secondary fill light to reduce harsh shadows */}
+          <pointLight
+            position={[-50, -50, -50]}
+            intensity={0.5}
+            color="#ffffff"
+          />
+
+          {/* Rim light to create edge highlights */}
+          <pointLight position={[0, 0, 100]} intensity={0.3} color="#ffffff" />
+
           <CelestialBodyComponent body={earth} />
-          <OrbitControls />
+          <OrbitLine orbit={exampleOrbit} color="#00ff00" />
+          <OrbitControls
+            enableDamping={true}
+            dampingFactor={0.05}
+            minDistance={50}
+            maxDistance={600}
+            target={[0, 0, 0]}
+            enablePan={true}
+            enableZoom={true}
+            enableRotate={true}
+          />
         </Canvas>
       </div>
     </div>
