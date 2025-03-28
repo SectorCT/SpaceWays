@@ -1,10 +1,26 @@
-import { Canvas } from '@react-three/fiber'
-import { Stars, OrbitControls } from '@react-three/drei'
-import { CelestialBodyComponent } from './components/CelestialBody'
-import { CelestialBody } from './types/CelestialBody'
-import './App.css'
+import { Canvas } from "@react-three/fiber";
+import { Stars, OrbitControls } from "@react-three/drei";
+import { CelestialBodyComponent } from "./components/CelestialBody";
+import { OrbitLine } from "./components/OrbitLine";
+import { CelestialBody } from "./types/CelestialBody";
+import { Orbit } from "./types/orbit";
+import "./App.css";
 
-// Create Earth celestial body
+const exampleOrbit: Orbit = {
+  name: "Example Orbit",
+  semi_major_axis: 100, // Scaled down for visualization
+  eccentricity: 0.2,
+  inclination: 30,
+  raan: 0,
+  arg_periapsis: 0,
+  true_anomaly: 0,
+  apoapsis: 120,
+  periapsis: 80,
+  orbital_period: 86400,
+  mean_motion: 0.0000729,
+  epoch: new Date().toISOString(),
+};
+
 const earth: CelestialBody = {
     name: "Earth",
     orbit: {
@@ -43,10 +59,11 @@ function App() {
                 <Canvas camera={{ position: [0, 0, 100], fov: 45 }}>
                     <CelestialBodyComponent body={earth} />
                     <OrbitControls />
+                    <OrbitLine orbit={exampleOrbit} color="#00ff00" />
                 </Canvas>
             </div>
         </div>
     )
 }
 
-export default App
+export default App;
