@@ -4,38 +4,56 @@ import { Sphere } from '@react-three/drei'
 import { CelestialBody } from '../types/CelestialBody'
 import { getOrbitalPosition } from '../getPositionFromOrbit'
 import * as THREE from 'three'
+import { SelectionIndicator } from './SelectionIndicator'
 
 interface CelestialBodyProps {
     body: CelestialBody;
     currentTime: Date;
+    isSelected: boolean;
+    onSelect: (body: CelestialBody) => void;
 }
 
-export function CelestialBodyComponent({ body, currentTime }: CelestialBodyProps) {
+export function CelestialBodyComponent({ 
+    body, 
+    currentTime, 
+    isSelected, 
+    onSelect 
+}: CelestialBodyProps) {
+    console.log(`Rendering CelestialBodyComponent for ${body.name}, isSelected=${isSelected}`);
+    
     const meshRef = useRef<THREE.Mesh>(null)
     const [texture, setTexture] = useState<THREE.Texture | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const lastTimeRef = useRef(currentTime)
+    const [position, setPosition] = useState<THREE.Vector3>(new THREE.Vector3())
+    const materialRef = useRef<THREE.MeshBasicMaterial>(null)
+    
+    // Update material color when selection changes
+    useEffect(() => {
+        if (meshRef.current && meshRef.current.material) {
+            const material = meshRef.current.material as THREE.MeshBasicMaterial;
+            if (isSelected) {
+                material.color.set(0x88ccff);
+            } else if (texture) {
+                material.color.set(0xffffff);
+            } else {
+                material.color.set(body.color);
+            }
+        }
+    }, [isSelected, texture, body.color]);
     
     useEffect(() => {
+        console.log(`Loading texture for ${body.name}: ${body.texture || 'none'}`);
         if (body.texture) {
             console.log('Starting texture load for:', body.name)
             setIsLoading(true)
             const loader = new THREE.TextureLoader()
-            
-            // Create a new texture instance
-            const newTexture = new THREE.Texture()
-            newTexture.generateMipmaps = true
-            newTexture.minFilter = THREE.LinearMipmapLinearFilter
-            newTexture.magFilter = THREE.LinearFilter
             
             loader.load(
                 body.texture,
                 (loadedTexture) => {
                     console.log('Texture loaded successfully for:', body.name)
                     loadedTexture.needsUpdate = true
-                    loadedTexture.generateMipmaps = true
-                    loadedTexture.minFilter = THREE.LinearMipmapLinearFilter
-                    loadedTexture.magFilter = THREE.LinearFilter
                     setTexture(loadedTexture)
                     setIsLoading(false)
                 },
@@ -55,8 +73,9 @@ export function CelestialBodyComponent({ body, currentTime }: CelestialBodyProps
     useFrame(() => {
         if (meshRef.current) {
             // Update position based on simulation time
-            const position = getOrbitalPosition(body, currentTime)
-            meshRef.current.position.set(position.x, position.y, position.z)
+            const newPosition = getOrbitalPosition(body, currentTime)
+            meshRef.current.position.set(newPosition.x, newPosition.y, newPosition.z)
+            setPosition(new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z))
             
             // Calculate rotation based on time difference
             const timeDiff = (currentTime.getTime() - lastTimeRef.current.getTime()) / 1000 // Convert to seconds
@@ -69,21 +88,49 @@ export function CelestialBodyComponent({ body, currentTime }: CelestialBodyProps
 
     // Initial position
     const initialPosition = getOrbitalPosition(body, currentTime)
+    console.log(`Initial position for ${body.name}:`, initialPosition);
+
+    const handleClick = (event: any) => {
+        console.log(`${body.name} clicked`);
+        event.stopPropagation();
+        onSelect(body);
+    };
 
     if (isLoading) {
+        console.log(`${body.name} is still loading, not rendering`);
         return null // Don't render anything while loading
     }
 
+    console.log(`Rendering ${body.name} with texture: ${texture ? 'loaded' : 'none'}`);
+
+    // Define the material color based on selection state and texture
+    const materialColor = isSelected 
+        ? new THREE.Color(0x88ccff) 
+        : (texture ? new THREE.Color(0xffffff) : new THREE.Color(body.color));
+
     return (
-        <Sphere
-            ref={meshRef}
-            args={[body.radius * body.scale, 32, 32]}
-            position={[initialPosition.x, initialPosition.y, initialPosition.z]}
-        >
-            <meshBasicMaterial
-                map={texture || undefined}
-                color={texture ? undefined : body.color}
-            />
-        </Sphere>
+        <>
+            <Sphere
+                ref={meshRef}
+                args={[body.radius * body.scale, 32, 32]}
+                position={[initialPosition.x, initialPosition.y, initialPosition.z]}
+                onClick={handleClick}
+                onPointerOver={() => document.body.style.cursor = 'pointer'}
+                onPointerOut={() => document.body.style.cursor = 'auto'}
+            >
+                <meshBasicMaterial
+                    ref={materialRef}
+                    map={texture || undefined}
+                    color={materialColor}
+                />
+            </Sphere>
+
+            {isSelected && (
+                <SelectionIndicator 
+                    position={position} 
+                    radius={body.radius * body.scale} 
+                />
+            )}
+        </>
     )
 } 

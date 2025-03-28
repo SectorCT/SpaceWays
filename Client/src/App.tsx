@@ -5,6 +5,7 @@ import { OrbitLine } from "./components/OrbitLine";
 import { CelestialBody } from "./types/CelestialBody";
 import { Orbit } from "./types/orbit";
 import { useState, useEffect } from "react";
+import { InfoPanel } from "./components/InfoPanel";
 import "./App.css";
 
 const exampleOrbit: Orbit = {
@@ -57,11 +58,14 @@ const earth: CelestialBody = {
 };
 
 function App() {
+    console.log("App component rendering");
     const [simulationTime, setSimulationTime] = useState<Date>(new Date());
     const [timeSpeed, setTimeSpeed] = useState(1); // 1 = real time, 2 = 2x speed, etc.
     const [isPaused, setIsPaused] = useState(false);
+    const [selectedBody, setSelectedBody] = useState<CelestialBody | null>(null);
 
     useEffect(() => {
+        console.log("Time simulation effect running");
         let lastTime = Date.now();
         const interval = setInterval(() => {
             if (!isPaused) {
@@ -79,48 +83,130 @@ function App() {
         setTimeSpeed(speed);
     };
 
+    const handleSelectBody = (body: CelestialBody) => {
+        console.log("Selected body:", body.name);
+        
+        // Toggle selection if clicking the same body
+        if (selectedBody && selectedBody.name === body.name) {
+            console.log("Deselecting body:", body.name);
+            setSelectedBody(null);
+        } else {
+            setSelectedBody(body);
+        }
+    };
+
+    const handleCloseInfoPanel = () => {
+        setSelectedBody(null);
+    };
+
+    // Handle background clicks to deselect
+    const handleBackgroundClick = (e: React.MouseEvent) => {
+        console.log("Background clicked");
+        // Only deselect if clicking on the canvas background, not on UI elements
+        if (selectedBody && e.target === e.currentTarget) {
+            setSelectedBody(null);
+        }
+    };
+
+    // Debug render state
+    console.log("Current render state:", {
+        simulationTime: simulationTime.toISOString(),
+        timeSpeed,
+        isPaused,
+        selectedBody: selectedBody?.name || 'none'
+    });
+
     return (
         <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
-            {/* Time controls */}
+            {/* Single Canvas for all 3D content */}
+            <div 
+                style={{ width: '100%', height: '100%' }}
+                onClick={handleBackgroundClick}
+            >
+                <Canvas camera={{ position: [0, 0, 100], fov: 45 }}>
+                    {/* Background stars */}
+                    <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+                    
+                    {/* Celestial bodies */}
+                    <CelestialBodyComponent 
+                        body={earth} 
+                        currentTime={simulationTime} 
+                        isSelected={selectedBody?.name === earth.name}
+                        onSelect={handleSelectBody}
+                    />
+                    <CelestialBodyComponent 
+                        body={moon} 
+                        currentTime={simulationTime} 
+                        isSelected={selectedBody?.name === moon.name}
+                        onSelect={handleSelectBody}
+                    />
+                    
+                    {/* Orbit lines */}
+                    <OrbitLine orbit={exampleOrbit} color="#00ff00" />
+                    
+                    {/* Controls */}
+                    <OrbitControls 
+                        enablePan={true}
+                        enableZoom={true}
+                        enableRotate={true}
+                    />
+                </Canvas>
+            </div>
+
+            {/* Time controls with new stylish UI */}
+            <div className="time-controls">
+                <div className="time-label">Simulation Time</div>
+                <div className="time-value">{simulationTime.toLocaleString()}</div>
+                
+                <div className="speed-display">
+                    <span className="speed-label">Speed:</span>
+                    <span className="speed-value">{timeSpeed}x</span>
+                </div>
+                
+                <div className="controls-row">
+                    <button 
+                        className={`time-button pause-button ${isPaused ? 'paused' : ''}`}
+                        onClick={() => setIsPaused(!isPaused)}
+                    >
+                        {isPaused ? 'Resume' : 'Pause'}
+                    </button>
+                </div>
+                
+                <div className="controls-row" style={{ marginTop: '8px' }}>
+                    <button 
+                        className="time-button speed-button slower"
+                        onClick={() => handleSpeedChange(Math.max(1, timeSpeed / 2))}
+                    >
+                        <span className="speed-icon">←</span> Slower
+                    </button>
+                    <div style={{ width: '10px' }}></div>
+                    <button 
+                        className="time-button speed-button faster"
+                        onClick={() => handleSpeedChange(timeSpeed * 2)}
+                    >
+                        Faster <span className="speed-icon">→</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Debug info */}
             <div style={{ 
                 position: 'absolute', 
                 top: 20, 
-                left: 20, 
+                right: 20, 
                 color: 'white',
                 zIndex: 1000,
                 background: 'rgba(0,0,0,0.7)',
                 padding: '10px',
                 borderRadius: '5px'
             }}>
-                <div>Time: {simulationTime.toLocaleString()}</div>
-                <div>Speed: {timeSpeed}x</div>
-                <button onClick={() => setIsPaused(!isPaused)}>
-                    {isPaused ? 'Resume' : 'Pause'}
-                </button>
-                <button onClick={() => handleSpeedChange(Math.max(1, timeSpeed / 2))}>
-                    Slower
-                </button>
-                <button onClick={() => handleSpeedChange(timeSpeed * 2)}>
-                    Faster
-                </button>
             </div>
 
-            {/* Background stars */}
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-                <Canvas>
-                    <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-                </Canvas>
-            </div>
-            
-            {/* Interactive scene */}
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-                <Canvas camera={{ position: [0, 0, 100], fov: 45 }}>
-                    <CelestialBodyComponent body={earth} currentTime={simulationTime} />
-                    <CelestialBodyComponent body={moon} currentTime={simulationTime} />
-                    <OrbitControls />
-                    <OrbitLine orbit={exampleOrbit} color="#00ff00" />
-                </Canvas>
-            </div>
+            {/* Info panel */}
+            <InfoPanel 
+                selectedBody={selectedBody} 
+                onClose={handleCloseInfoPanel} 
+            />
         </div>
     )
 }

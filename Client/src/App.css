@@ -48,3 +48,147 @@ body {
 .read-the-docs {
   color: #888;
 }
+
+/* Time controls styles */
+.time-controls {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  color: white;
+  z-index: 1000;
+  background: rgba(15, 20, 35, 0.85);
+  padding: 15px;
+  border-radius: 12px;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 0 20px rgba(0, 100, 255, 0.25),
+              inset 0 0 10px rgba(0, 100, 255, 0.1);
+  border: 1px solid rgba(0, 150, 255, 0.3);
+  font-family: 'Roboto', sans-serif;
+  transition: all 0.3s ease;
+  min-width: 220px;
+}
+
+.time-controls:hover {
+  box-shadow: 0 0 25px rgba(0, 150, 255, 0.4),
+              inset 0 0 15px rgba(0, 150, 255, 0.2);
+}
+
+.time-label {
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #88ccff;
+  text-shadow: 0 0 8px rgba(0, 150, 255, 0.5);
+  letter-spacing: 0.5px;
+}
+
+.time-value {
+  margin-bottom: 8px;
+  font-weight: 400;
+  color: #ffffff;
+  letter-spacing: 0.2px;
+}
+
+.speed-display {
+  display: flex;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.speed-value {
+  font-weight: 600;
+  margin: 0 8px;
+  color: #88ddff;
+  min-width: 20px;
+  text-align: center;
+}
+
+.speed-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.controls-row {
+  display: flex;
+  margin-top: 12px;
+  justify-content: space-between;
+}
+
+.time-button {
+  background: linear-gradient(to bottom, rgba(20, 60, 120, 0.8), rgba(10, 40, 80, 0.8));
+  border: 1px solid rgba(0, 150, 255, 0.4);
+  border-radius: 6px;
+  color: white;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  min-width: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.time-button:hover {
+  background: linear-gradient(to bottom, rgba(30, 80, 150, 0.9), rgba(20, 60, 120, 0.9));
+  box-shadow: 0 0 10px rgba(0, 150, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.time-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 5px rgba(0, 150, 255, 0.3);
+}
+
+.pause-button {
+  flex: 1.5;
+  margin-right: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pause-button::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+  background-size: 200% 200%;
+  animation: shine 3s infinite;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.pause-button:hover::after {
+  opacity: 1;
+}
+
+.speed-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.speed-button.slower {
+  background: linear-gradient(to bottom, rgba(20, 60, 120, 0.8), rgba(10, 30, 70, 0.8));
+}
+
+.speed-button.faster {
+  background: linear-gradient(to bottom, rgba(20, 80, 150, 0.8), rgba(10, 50, 100, 0.8));
+}
+
+.speed-icon {
+  margin-right: 5px;
+  font-size: 1rem;
+}
+
+@keyframes shine {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

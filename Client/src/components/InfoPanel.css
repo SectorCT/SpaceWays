@@ -1,0 +1,129 @@
+.info-panel {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  width: 320px;
+  background: rgba(10, 12, 22, 0.85);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 150, 255, 0.3), 
+              0 0 40px rgba(0, 150, 255, 0.1),
+              inset 0 0 15px rgba(0, 200, 255, 0.1);
+  color: #e0f2ff;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+  z-index: 1000;
+  font-family: 'Roboto', sans-serif;
+  border: 1px solid rgba(0, 200, 255, 0.3);
+  transform: translateY(0);
+  animation: panel-appear 0.5s ease-out;
+}
+
+@keyframes panel-appear {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.info-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: linear-gradient(to right, rgba(0, 120, 255, 0.7), rgba(0, 80, 200, 0.7));
+  border-bottom: 1px solid rgba(0, 200, 255, 0.5);
+}
+
+.info-panel-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 500;
+  text-shadow: 0 0 10px rgba(0, 200, 255, 0.8);
+  letter-spacing: 0.5px;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  border-radius: 50%;
+}
+
+.close-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.info-panel-body {
+  padding: 15px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.info-section {
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(0, 200, 255, 0.2);
+}
+
+.info-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.info-section h3 {
+  font-size: 1.1rem;
+  margin: 0 0 12px 0;
+  color: #5cddff;
+  font-weight: 500;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.info-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+.info-value {
+  font-weight: 500;
+  color: #ffffff;
+}
+
+/* Scrollbar styling */
+.info-panel-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.info-panel-body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.info-panel-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 150, 255, 0.5);
+  border-radius: 10px;
+}
+
+.info-panel-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 200, 255, 0.7);
+} 
