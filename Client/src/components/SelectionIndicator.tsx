@@ -1,13 +1,15 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { CelestialBody } from '../types/CelestialBody';
 
 interface SelectionIndicatorProps {
   position: THREE.Vector3;
   radius: number;
+  body: CelestialBody;
 }
 
-export function SelectionIndicator({ position, radius }: SelectionIndicatorProps) {
+export function SelectionIndicator({ position, radius, body }: SelectionIndicatorProps) {
   const groupRef = useRef<THREE.Group>(null);
   const ringRef = useRef<THREE.Mesh>(null);
   const glowRef = useRef<THREE.Mesh>(null);
@@ -16,6 +18,26 @@ export function SelectionIndicator({ position, radius }: SelectionIndicatorProps
   // Create sizes for the indicator components
   const indicatorRadius = radius * 1.2;
   const glowRadius = radius * 1.8;
+  
+  // Generate colors from the body's color
+  const colors = useMemo(() => {
+    // Create Three.js color from the body's color
+    const baseColor = new THREE.Color(body.color);
+    
+    // Create variations for different parts of the indicator
+    const mainColor = new THREE.Color(baseColor).multiplyScalar(1.2);  // Brighter
+    const glowColor = new THREE.Color(baseColor).multiplyScalar(0.8);  // Darker
+    const particleColor = new THREE.Color(baseColor).multiplyScalar(1.4); // Even brighter
+    
+    return {
+      main: mainColor,
+      glow: glowColor,
+      particle: particleColor,
+      mainHex: '#' + mainColor.getHexString(),
+      glowHex: '#' + glowColor.getHexString(),
+      particleHex: '#' + particleColor.getHexString()
+    };
+  }, [body.color]);
   
   // Create particles for space dust effect
   useEffect(() => {
@@ -44,6 +66,11 @@ export function SelectionIndicator({ position, radius }: SelectionIndicatorProps
       particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
     }
   }, [radius]);
+  
+  // Create glow texture
+  const glowTexture = useMemo(() => {
+    return createGlowTexture(colors.glowHex);
+  }, [colors.glowHex]);
   
   useFrame((state) => {
     if (groupRef.current) {
@@ -97,14 +124,14 @@ export function SelectionIndicator({ position, radius }: SelectionIndicatorProps
       {/* Main selection ring */}
       <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[indicatorRadius, indicatorRadius + 0.3, 64]} />
-        <meshBasicMaterial color="#00ffff" transparent opacity={0.9} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={colors.mainHex} transparent opacity={0.9} side={THREE.DoubleSide} />
       </mesh>
       
       {/* Inner pulse ring */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[indicatorRadius * 0.9, indicatorRadius * 0.92, 64]} />
         <meshBasicMaterial 
-          color="#80ffff" 
+          color={colors.mainHex} 
           transparent 
           opacity={0.7} 
           side={THREE.DoubleSide}
@@ -115,11 +142,11 @@ export function SelectionIndicator({ position, radius }: SelectionIndicatorProps
       <mesh ref={glowRef} rotation={[Math.PI / 2, 0, 0]}>
         <planeGeometry args={[glowRadius * 2, glowRadius * 2]} />
         <meshBasicMaterial 
-          color="#00a0ff"
+          color={colors.glowHex}
           transparent 
           opacity={0.2}
           side={THREE.DoubleSide}
-          alphaMap={createGlowTexture()}
+          alphaMap={glowTexture}
           alphaTest={0.01}
         />
       </mesh>
@@ -129,7 +156,7 @@ export function SelectionIndicator({ position, radius }: SelectionIndicatorProps
         <group key={`bracket-${i}`} rotation={[0, 0, (Math.PI / 2) * i]}>
           <mesh position={[indicatorRadius * 1.1, indicatorRadius * 1.1, 0]} rotation={[0, 0, Math.PI / 4]}>
             <planeGeometry args={[indicatorRadius * 0.4, 0.1]} />
-            <meshBasicMaterial color="#40ffff" transparent opacity={0.8} side={THREE.DoubleSide} />
+            <meshBasicMaterial color={colors.mainHex} transparent opacity={0.8} side={THREE.DoubleSide} />
           </mesh>
         </group>
       ))}
@@ -145,7 +172,7 @@ export function SelectionIndicator({ position, radius }: SelectionIndicatorProps
             0,
             Math.PI / 4
           ]} />
-          <meshBasicMaterial color="#20ffff" transparent opacity={0.5} side={THREE.DoubleSide} />
+          <meshBasicMaterial color={colors.mainHex} transparent opacity={0.5} side={THREE.DoubleSide} />
         </mesh>
       ))}
       
@@ -154,7 +181,7 @@ export function SelectionIndicator({ position, radius }: SelectionIndicatorProps
         <bufferGeometry />
         <pointsMaterial 
           size={0.3} 
-          color="#80ffff" 
+          color={colors.particleHex} 
           transparent 
           opacity={0.6} 
           sizeAttenuation 
@@ -166,7 +193,7 @@ export function SelectionIndicator({ position, radius }: SelectionIndicatorProps
 }
 
 // Helper function to create a radial gradient texture for the glow effect
-function createGlowTexture(): THREE.Texture {
+function createGlowTexture(color: string): THREE.Texture {
   const size = 256;
   const canvas = document.createElement('canvas');
   canvas.width = size;
@@ -178,10 +205,16 @@ function createGlowTexture(): THREE.Texture {
     size / 2, size / 2, size / 2
   );
   
-  gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-  gradient.addColorStop(0.4, 'rgba(200, 255, 255, 0.5)');
-  gradient.addColorStop(0.7, 'rgba(100, 200, 255, 0.2)');
-  gradient.addColorStop(1, 'rgba(0, 100, 255, 0)');
+  // Parse the color to extract RGB components
+  const colorObj = new THREE.Color(color);
+  const r = Math.floor(colorObj.r * 255);
+  const g = Math.floor(colorObj.g * 255);
+  const b = Math.floor(colorObj.b * 255);
+  
+  gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 1)`);
+  gradient.addColorStop(0.4, `rgba(${r}, ${g}, ${b}, 0.5)`);
+  gradient.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, 0.2)`);
+  gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
   
   context.fillStyle = gradient;
   context.fillRect(0, 0, size, size);

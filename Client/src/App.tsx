@@ -83,12 +83,8 @@ function App() {
         setTimeSpeed(speed);
     };
 
-    const handleSelectBody = (body: CelestialBody) => {
-        console.log("Selected body:", body.name);
-        
-        // Toggle selection if clicking the same body
+    const handleSelectBody = (body: CelestialBody) => {        
         if (selectedBody && selectedBody.name === body.name) {
-            console.log("Deselecting body:", body.name);
             setSelectedBody(null);
         } else {
             setSelectedBody(body);
@@ -102,7 +98,6 @@ function App() {
     // Handle background clicks to deselect
     const handleBackgroundClick = (e: React.MouseEvent) => {
         console.log("Background clicked");
-        // Only deselect if clicking on the canvas background, not on UI elements
         if (selectedBody && e.target === e.currentTarget) {
             setSelectedBody(null);
         }

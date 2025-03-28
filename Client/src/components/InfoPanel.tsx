@@ -1,5 +1,7 @@
 import { CelestialBody } from '../types/CelestialBody';
 import './InfoPanel.css';
+import { useEffect, useState } from 'react';
+import * as THREE from 'three';
 
 interface InfoPanelProps {
   selectedBody: CelestialBody | null;
@@ -7,6 +9,39 @@ interface InfoPanelProps {
 }
 
 export function InfoPanel({ selectedBody, onClose }: InfoPanelProps) {
+  const [headerStyle, setHeaderStyle] = useState<React.CSSProperties>({});
+  const [accentColor, setAccentColor] = useState<string>("");
+  const [lightAccentColor, setLightAccentColor] = useState<string>("");
+  const [textAccentColor, setTextAccentColor] = useState<string>("");
+
+  useEffect(() => {
+    if (selectedBody) {
+      // Create a Three.js color from the body's color (handles both hex and named colors)
+      const bodyColor = new THREE.Color(selectedBody.color);
+      
+      // Create slightly different shades for various UI elements
+      const darkerColor = new THREE.Color(bodyColor).multiplyScalar(0.7);
+      const lighterColor = new THREE.Color(bodyColor).multiplyScalar(1.3);
+      
+      // Convert to CSS-compatible rgba strings
+      const mainColorRGBA = `rgba(${Math.floor(bodyColor.r * 255)}, ${Math.floor(bodyColor.g * 255)}, ${Math.floor(bodyColor.b * 255)}, 0.7)`;
+      const darkerColorRGBA = `rgba(${Math.floor(darkerColor.r * 255)}, ${Math.floor(darkerColor.g * 255)}, ${Math.floor(darkerColor.b * 255)}, 0.7)`;
+      const lighterColorRGBA = `rgba(${Math.floor(lighterColor.r * 255)}, ${Math.floor(lighterColor.g * 255)}, ${Math.floor(lighterColor.b * 255)}, 0.5)`;
+      const textColorHex = `#${lighterColor.getHexString()}`;
+      
+      // Set the header gradient using the body's color
+      setHeaderStyle({
+        background: `linear-gradient(to right, ${mainColorRGBA}, ${darkerColorRGBA})`,
+        borderBottom: `1px solid ${lighterColorRGBA}`
+      });
+      
+      // Set accent colors for other elements
+      setAccentColor(mainColorRGBA);
+      setLightAccentColor(lighterColorRGBA);
+      setTextAccentColor(textColorHex);
+    }
+  }, [selectedBody]);
+
   if (!selectedBody) return null;
 
   const formatMass = (mass: number) => {
@@ -20,15 +55,30 @@ export function InfoPanel({ selectedBody, onClose }: InfoPanelProps) {
     return `${distance.toFixed(2)} km`;
   };
 
+  // Custom styles for the panel based on the celestial body
+  const panelStyle: React.CSSProperties = {
+    border: `1px solid ${lightAccentColor}`
+  };
+
+  // Custom styles for section dividers
+  const sectionStyle: React.CSSProperties = {
+    borderBottom: `1px solid ${lightAccentColor}`
+  };
+
+  // Custom styles for section headers
+  const sectionHeaderStyle: React.CSSProperties = {
+    color: textAccentColor
+  };
+
   return (
-    <div className="info-panel">
-      <div className="info-panel-header">
+    <div className="info-panel" style={panelStyle}>
+      <div className="info-panel-header" style={headerStyle}>
         <h2>{selectedBody.name}</h2>
         <button className="close-button" onClick={onClose}>×</button>
       </div>
       
       <div className="info-panel-body">
-        <div className="info-section">
+        <div className="info-section" style={sectionStyle}>
           <div className="info-row">
             <span className="info-label">Radius:</span>
             <span className="info-value">{formatDistance(selectedBody.radius)}</span>
@@ -40,7 +90,7 @@ export function InfoPanel({ selectedBody, onClose }: InfoPanelProps) {
         </div>
 
         <div className="info-section">
-          <h3>Orbital Parameters</h3>
+          <h3 style={sectionHeaderStyle}>Orbital Parameters</h3>
           <div className="info-row">
             <span className="info-label">Semi-major axis:</span>
             <span className="info-value">{formatDistance(selectedBody.orbit.semi_major_axis)}</span>
