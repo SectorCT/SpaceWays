@@ -1,15 +1,53 @@
 import { Canvas } from '@react-three/fiber'
-import { Stars } from '@react-three/drei'
+import { Stars, OrbitControls } from '@react-three/drei'
+import { CelestialBodyComponent } from './components/CelestialBody'
+import { CelestialBody } from './types/CelestialBody'
 import './App.css'
 
+// Create Earth celestial body
+const earth: CelestialBody = {
+    name: "Earth",
+    orbit: {
+        name: "Earth Orbit",
+        semi_major_axis: 0,  // At center
+        eccentricity: 0,
+        inclination: 0,
+        raan: 0,
+        arg_periapsis: 0,
+        true_anomaly: 0,
+        apoapsis: 0,
+        periapsis: 0,
+        orbital_period: 86400,  // 24 hours in seconds
+        mean_motion: 0.0000729,  // 2π/86400
+        epoch: new Date().toISOString()
+    },
+    radius: 6371,  // Earth's radius in km
+    color: "#4287f5",  // Blue color for Earth
+    mass: 5.972e24,  // Earth's mass in kg
+    scale: 0.01  // Increased scale for better visibility
+}
+
 function App() {
-  return (
-    <div style={{ width: '100vw', height: '100vh', background: '#000' }}>
-      <Canvas style={{ position: 'absolute', top: 0, left: 0 }}>
-        <Stars radius={300} depth={60} count={10000} factor={7} saturation={0} fade speed={1} />
-      </Canvas>
-    </div>
-  )
+    return (
+        <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
+            {/* Background stars */}
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+                <Canvas>
+                    <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+                </Canvas>
+            </div>
+            
+            {/* Interactive scene */}
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+                <Canvas camera={{ position: [0, 0, 100], fov: 45 }}>
+                    <ambientLight intensity={1} />
+                    <pointLight position={[10, 10, 10]} intensity={1} />
+                    <CelestialBodyComponent body={earth} />
+                    <OrbitControls />
+                </Canvas>
+            </div>
+        </div>
+    )
 }
 
 export default App
