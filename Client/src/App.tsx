@@ -163,15 +163,6 @@ function App() {
                     <span className="speed-value">{timeSpeed}x</span>
                 </div>
                 
-                <div className="controls-row">
-                    <button 
-                        className={`time-button pause-button ${isPaused ? 'paused' : ''}`}
-                        onClick={() => setIsPaused(!isPaused)}
-                    >
-                        {isPaused ? 'Resume' : 'Pause'}
-                    </button>
-                </div>
-                
                 <div className="controls-row" style={{ marginTop: '8px' }}>
                     <button 
                         className="time-button speed-button slower"
@@ -185,6 +176,16 @@ function App() {
                         onClick={() => handleSpeedChange(timeSpeed * 2)}
                     >
                         Faster <span className="speed-icon">→</span>
+                    </button>
+                </div>
+
+                
+                <div className="controls-row">
+                    <button 
+                        className={`time-button pause-button ${isPaused ? 'paused' : ''}`}
+                        onClick={() => setIsPaused(!isPaused)}
+                    >
+                        {isPaused ? 'Resume' : 'Pause'}
                     </button>
                 </div>
             </div>

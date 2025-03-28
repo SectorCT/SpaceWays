@@ -141,7 +141,6 @@ body {
 
 .pause-button {
   flex: 1.5;
-  margin-right: 10px;
   position: relative;
   overflow: hidden;
 }
