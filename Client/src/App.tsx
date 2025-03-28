@@ -4,6 +4,7 @@ import { CelestialBodyComponent } from "./components/CelestialBody";
 import { OrbitLine } from "./components/OrbitLine";
 import { CelestialBody } from "./types/CelestialBody";
 import { Orbit } from "./types/orbit";
+import { useState, useEffect } from "react";
 import "./App.css";
 
 const exampleOrbit: Orbit = {
@@ -21,21 +22,15 @@ const exampleOrbit: Orbit = {
   epoch: new Date().toISOString(),
 };
 
-// Create a second wider orbit
-const secondOrbit: Orbit = {
-  name: "Second Orbit",
-  semi_major_axis: 150, // Wider than the first orbit
-  eccentricity: 0.1, // Less eccentric
-  inclination: 45, // Different inclination
-  raan: 45, // Different RAAN
-  arg_periapsis: 30, // Different argument of periapsis
-  true_anomaly: 0,
-  apoapsis: 165,
-  periapsis: 135,
-  orbital_period: 86400,
-  mean_motion: 0.0000729,
-  epoch: new Date().toISOString(),
-};
+const moon: CelestialBody = {
+  name: "Moon",
+  orbit: exampleOrbit,
+  radius: 1737,
+  color: "#808080",
+  mass: 7.348e22,
+  scale: 0.005,
+  texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg"
+}
 
 const earth: CelestialBody = {
   name: "Earth",
@@ -62,86 +57,72 @@ const earth: CelestialBody = {
 };
 
 function App() {
-  return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        background: "#000",
-        position: "relative",
-      }}
-    >
-      {/* Background stars */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-        }}
-      >
-        <Canvas>
-          <Stars
-            radius={100}
-            depth={50}
-            count={5000}
-            factor={4}
-            saturation={0}
-            fade
-            speed={1}
-          />
-        </Canvas>
-      </div>
+    const [simulationTime, setSimulationTime] = useState<Date>(new Date());
+    const [timeSpeed, setTimeSpeed] = useState(1); // 1 = real time, 2 = 2x speed, etc.
+    const [isPaused, setIsPaused] = useState(false);
 
-      {/* Interactive scene */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-        }}
-      >
-        <Canvas camera={{ position: [150, 150, 150], fov: 45 }}>
-          {/* Main ambient light for overall scene illumination */}
-          <ambientLight intensity={0.3} />
+    useEffect(() => {
+        let lastTime = Date.now();
+        const interval = setInterval(() => {
+            if (!isPaused) {
+                const currentTime = Date.now();
+                const deltaMs = (currentTime - lastTime) * timeSpeed;
+                setSimulationTime(prevTime => new Date(prevTime.getTime() + deltaMs));
+                lastTime = currentTime;
+            }
+        }, 16); // ~60fps
 
-          {/* Main directional light (simulating sunlight) */}
-          <directionalLight
-            position={[100, 100, 100]}
-            intensity={1}
-            castShadow={true}
-          />
+        return () => clearInterval(interval);
+    }, [timeSpeed, isPaused]);
 
-          {/* Secondary fill light to reduce harsh shadows */}
-          <pointLight
-            position={[-50, -50, -50]}
-            intensity={0.5}
-            color="#ffffff"
-          />
+    const handleSpeedChange = (speed: number) => {
+        setTimeSpeed(speed);
+    };
 
-          {/* Rim light to create edge highlights */}
-          <pointLight position={[0, 0, 100]} intensity={0.3} color="#ffffff" />
+    return (
+        <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
+            {/* Time controls */}
+            <div style={{ 
+                position: 'absolute', 
+                top: 20, 
+                left: 20, 
+                color: 'white',
+                zIndex: 1000,
+                background: 'rgba(0,0,0,0.7)',
+                padding: '10px',
+                borderRadius: '5px'
+            }}>
+                <div>Time: {simulationTime.toLocaleString()}</div>
+                <div>Speed: {timeSpeed}x</div>
+                <button onClick={() => setIsPaused(!isPaused)}>
+                    {isPaused ? 'Resume' : 'Pause'}
+                </button>
+                <button onClick={() => handleSpeedChange(Math.max(1, timeSpeed / 2))}>
+                    Slower
+                </button>
+                <button onClick={() => handleSpeedChange(timeSpeed * 2)}>
+                    Faster
+                </button>
+            </div>
 
-          <CelestialBodyComponent body={earth} />
-          <OrbitLine orbit={exampleOrbit} color="#00ff00" />
-          <OrbitLine orbit={secondOrbit} color="#ff00ff" dashed={true} />
-          <OrbitControls
-            enableDamping={true}
-            dampingFactor={0.05}
-            minDistance={50}
-            maxDistance={600}
-            target={[0, 0, 0]}
-            enablePan={true}
-            enableZoom={true}
-            enableRotate={true}
-          />
-        </Canvas>
-      </div>
-    </div>
-  );
+            {/* Background stars */}
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+                <Canvas>
+                    <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+                </Canvas>
+            </div>
+            
+            {/* Interactive scene */}
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+                <Canvas camera={{ position: [0, 0, 100], fov: 45 }}>
+                    <CelestialBodyComponent body={earth} currentTime={simulationTime} />
+                    <CelestialBodyComponent body={moon} currentTime={simulationTime} />
+                    <OrbitControls />
+                    <OrbitLine orbit={exampleOrbit} color="#00ff00" />
+                </Canvas>
+            </div>
+        </div>
+    )
 }
 
 export default App;

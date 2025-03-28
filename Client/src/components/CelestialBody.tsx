@@ -7,12 +7,14 @@ import * as THREE from 'three'
 
 interface CelestialBodyProps {
     body: CelestialBody;
+    currentTime: Date;
 }
 
-export function CelestialBodyComponent({ body }: CelestialBodyProps) {
+export function CelestialBodyComponent({ body, currentTime }: CelestialBodyProps) {
     const meshRef = useRef<THREE.Mesh>(null)
     const [texture, setTexture] = useState<THREE.Texture | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const lastTimeRef = useRef(currentTime)
     
     useEffect(() => {
         if (body.texture) {
@@ -50,20 +52,23 @@ export function CelestialBodyComponent({ body }: CelestialBodyProps) {
         }
     }, [body.texture, body.name])
     
-    useFrame((state, delta) => {
+    useFrame(() => {
         if (meshRef.current) {
-            // Update position based on current time
-            const position = getOrbitalPosition(body, new Date())
+            // Update position based on simulation time
+            const position = getOrbitalPosition(body, currentTime)
             meshRef.current.position.set(position.x, position.y, position.z)
             
-            // Rotate the body based on its orbital period
+            // Calculate rotation based on time difference
+            const timeDiff = (currentTime.getTime() - lastTimeRef.current.getTime()) / 1000 // Convert to seconds
             const rotationSpeed = (2 * Math.PI) / body.orbit.orbital_period
-            meshRef.current.rotation.y += rotationSpeed * delta
+            meshRef.current.rotation.y += rotationSpeed * timeDiff
+            
+            lastTimeRef.current = currentTime
         }
     })
 
     // Initial position
-    const initialPosition = getOrbitalPosition(body, new Date(body.orbit.epoch))
+    const initialPosition = getOrbitalPosition(body, currentTime)
 
     if (isLoading) {
         return null // Don't render anything while loading
