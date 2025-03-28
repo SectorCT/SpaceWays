@@ -9,44 +9,185 @@ interface SelectionIndicatorProps {
 
 export function SelectionIndicator({ position, radius }: SelectionIndicatorProps) {
   const groupRef = useRef<THREE.Group>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
+  const glowRef = useRef<THREE.Mesh>(null);
+  const particlesRef = useRef<THREE.Points>(null);
   
-  // Create a slightly larger radius for the indicator
+  // Create sizes for the indicator components
   const indicatorRadius = radius * 1.2;
+  const glowRadius = radius * 1.8;
+  
+  // Create particles for space dust effect
+  useEffect(() => {
+    if (particlesRef.current) {
+      const particleCount = 100;
+      const particleGeometry = particlesRef.current.geometry as THREE.BufferGeometry;
+      
+      const positions = new Float32Array(particleCount * 3);
+      const sizes = new Float32Array(particleCount);
+      
+      for (let i = 0; i < particleCount; i++) {
+        // Create a random position within a spherical shell around the object
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const distance = radius * (2 + Math.random() * 0.5);
+        
+        positions[i * 3] = distance * Math.sin(phi) * Math.cos(theta);
+        positions[i * 3 + 1] = distance * Math.sin(phi) * Math.sin(theta);
+        positions[i * 3 + 2] = distance * Math.cos(phi);
+        
+        // Random sizes
+        sizes[i] = Math.random() * 0.5 + 0.1;
+      }
+      
+      particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    }
+  }, [radius]);
   
   useFrame((state) => {
     if (groupRef.current) {
-      // Make the indicator face the camera
-      groupRef.current.lookAt(state.camera.position);
+      // Position the group at the celestial body's position
+      groupRef.current.position.copy(position);
       
-      // Optional: Make the indicator pulse slightly
+      // Make effects face the camera
+      if (ringRef.current) {
+        ringRef.current.lookAt(state.camera.position);
+      }
+      
+      if (glowRef.current) {
+        glowRef.current.lookAt(state.camera.position);
+      }
+      
+      // Animate various elements
       const time = state.clock.getElapsedTime();
-      const scale = 1 + Math.sin(time * 3) * 0.05;
-      groupRef.current.scale.set(scale, scale, scale);
+      
+      // Pulse the main ring
+      if (ringRef.current) {
+        const ringScale = 1 + Math.sin(time * 2) * 0.05;
+        ringRef.current.scale.set(ringScale, ringScale, ringScale);
+      }
+      
+      // Rotate the glow effect
+      if (glowRef.current) {
+        glowRef.current.rotation.z = time * 0.2;
+      }
+      
+      // Animate particles
+      if (particlesRef.current) {
+        particlesRef.current.rotation.y = time * 0.1;
+        particlesRef.current.rotation.z = time * 0.05;
+        
+        const particleGeometry = particlesRef.current.geometry as THREE.BufferGeometry;
+        const positions = particleGeometry.attributes.position.array as Float32Array;
+        const sizes = particleGeometry.attributes.size.array as Float32Array;
+        
+        for (let i = 0; i < positions.length / 3; i++) {
+          // Pulse particle sizes
+          sizes[i] = (Math.sin(time * 3 + i) * 0.2 + 0.8) * (Math.random() * 0.3 + 0.2);
+        }
+        
+        particleGeometry.attributes.size.needsUpdate = true;
+      }
     }
   });
 
-  // Position the indicator at the celestial body's position
-  useEffect(() => {
-    if (groupRef.current) {
-      groupRef.current.position.copy(position);
-    }
-  }, [position]);
-
   return (
     <group ref={groupRef}>
-      {/* Circle indicator */}
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[indicatorRadius, indicatorRadius + 0.2, 64]} />
-        <meshBasicMaterial color="#00ffff" transparent opacity={0.8} side={THREE.DoubleSide} />
+      {/* Main selection ring */}
+      <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[indicatorRadius, indicatorRadius + 0.3, 64]} />
+        <meshBasicMaterial color="#00ffff" transparent opacity={0.9} side={THREE.DoubleSide} />
       </mesh>
       
-      {/* Radial lines */}
+      {/* Inner pulse ring */}
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[indicatorRadius * 0.9, indicatorRadius * 0.92, 64]} />
+        <meshBasicMaterial 
+          color="#80ffff" 
+          transparent 
+          opacity={0.7} 
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      
+      {/* Outer glow */}
+      <mesh ref={glowRef} rotation={[Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[glowRadius * 2, glowRadius * 2]} />
+        <meshBasicMaterial 
+          color="#00a0ff"
+          transparent 
+          opacity={0.2}
+          side={THREE.DoubleSide}
+          alphaMap={createGlowTexture()}
+          alphaTest={0.01}
+        />
+      </mesh>
+      
+      {/* HUD-style corner brackets */}
       {[0, 1, 2, 3].map((i) => (
-        <mesh key={i} rotation={[0, 0, (Math.PI / 2) * i]}>
-          <planeGeometry args={[indicatorRadius * 0.8, 0.1]} />
-          <meshBasicMaterial color="#00ffff" transparent opacity={0.6} side={THREE.DoubleSide} />
+        <group key={`bracket-${i}`} rotation={[0, 0, (Math.PI / 2) * i]}>
+          <mesh position={[indicatorRadius * 1.1, indicatorRadius * 1.1, 0]} rotation={[0, 0, Math.PI / 4]}>
+            <planeGeometry args={[indicatorRadius * 0.4, 0.1]} />
+            <meshBasicMaterial color="#40ffff" transparent opacity={0.8} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      ))}
+      
+      {/* Decorative scan lines */}
+      {Array.from({ length: 3 }).map((_, i) => (
+        <mesh key={`scan-${i}`} position={[0, 0, 0.01]} rotation={[Math.PI / 2, 0, Math.PI * 2 * Math.random()]}>
+          <ringGeometry args={[
+            indicatorRadius * (0.95 + i * 0.1), 
+            indicatorRadius * (0.96 + i * 0.1), 
+            64,
+            1,
+            0,
+            Math.PI / 4
+          ]} />
+          <meshBasicMaterial color="#20ffff" transparent opacity={0.5} side={THREE.DoubleSide} />
         </mesh>
       ))}
+      
+      {/* Particles */}
+      <points ref={particlesRef}>
+        <bufferGeometry />
+        <pointsMaterial 
+          size={0.3} 
+          color="#80ffff" 
+          transparent 
+          opacity={0.6} 
+          sizeAttenuation 
+          alphaTest={0.1}
+        />
+      </points>
     </group>
   );
+}
+
+// Helper function to create a radial gradient texture for the glow effect
+function createGlowTexture(): THREE.Texture {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  
+  const context = canvas.getContext('2d')!;
+  const gradient = context.createRadialGradient(
+    size / 2, size / 2, 0,
+    size / 2, size / 2, size / 2
+  );
+  
+  gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+  gradient.addColorStop(0.4, 'rgba(200, 255, 255, 0.5)');
+  gradient.addColorStop(0.7, 'rgba(100, 200, 255, 0.2)');
+  gradient.addColorStop(1, 'rgba(0, 100, 255, 0)');
+  
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, size, size);
+  
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  
+  return texture;
 } 
