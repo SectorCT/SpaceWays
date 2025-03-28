@@ -6,3 +6,4 @@ requests
 poliastro
 uvicorn
 fastapi
+astropy
