@@ -22,9 +22,10 @@ const earth: CelestialBody = {
         epoch: new Date().toISOString()
     },
     radius: 6371,  // Earth's radius in km
-    color: "#4287f5",  // Blue color for Earth
+    color: "#4287f5",  // Fallback color if texture fails to load
     mass: 5.972e24,  // Earth's mass in kg
-    scale: 0.01  // Increased scale for better visibility
+    scale: 0.01,  // Increased scale for better visibility
+    texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg"  // Earth texture from Three.js repository
 }
 
 function App() {
@@ -40,8 +41,6 @@ function App() {
             {/* Interactive scene */}
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
                 <Canvas camera={{ position: [0, 0, 100], fov: 45 }}>
-                    <ambientLight intensity={1} />
-                    <pointLight position={[10, 10, 10]} intensity={1} />
                     <CelestialBodyComponent body={earth} />
                     <OrbitControls />
                 </Canvas>
