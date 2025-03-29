@@ -39,10 +39,21 @@ export function Spaceship({
     if (meshRef.current) {
       // Update position based on simulation time
       const newPosition = getOrbitalPosition(body, currentTime);
-      meshRef.current.position.set(newPosition.x, newPosition.y, newPosition.z);
-      setPosition(
-        new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z),
-      );
+      
+      // Calculate the direction to the center
+      const directionToCenter = new THREE.Vector3(0, 0, 0).sub(new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z)).normalize();
+      
+      // Move the ship closer to the center by a fraction of its radius
+      const offset = directionToCenter.multiplyScalar(body.radius * body.scale * 0.2);
+      
+      // Apply the offset to the position
+      const positionVector = new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z);
+      const adjustedPosition = positionVector.add(offset);
+      
+      // Add a small offset to the left
+                
+      meshRef.current.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
+      setPosition(adjustedPosition);
 
       // Calculate orbital angle based on time
       const orbitalProgress =
