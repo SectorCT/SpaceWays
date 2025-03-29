@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CelestialBody } from "../types/CelestialBody";
 import { getPositionFromOrbit2 } from "../getPositionFromOrbit";
@@ -65,14 +65,6 @@ export function Spaceship({
       );
       setPosition(adjustedPosition);
 
-      // Calculate orbital angle based on time
-      const timestamps = Object.keys(body.orbit).map(Number).sort((a, b) => a - b);
-      const orbitalPeriod = timestamps[timestamps.length - 1] - timestamps[0];
-      const currentTimeMs = currentTime.getTime();
-      const orbitalProgress =
-        (currentTimeMs % (orbitalPeriod * 1000)) /
-        (orbitalPeriod * 1000);
-      const angle = 2 * Math.PI * orbitalProgress;
 
       // Calculate the next position to determine direction
       const nextTime = new Date(currentTime.getTime() + 100);
