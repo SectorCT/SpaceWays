@@ -104,7 +104,7 @@ function App() {
     const zoomTargetRef = useRef<Vector3 | null>(null);
     const isZoomingRef = useRef(true);
     const zoomStartTimeRef = useRef<number>(performance.now());
-    const zoomedBodyRef = useRef<CelestialBody | null>(sun);
+    const zoomedBodyRef = useRef<any>(null);
 
     useEffect(() => {
         let lastTime = Date.now();
@@ -611,7 +611,7 @@ function App() {
                         minDistance={1}
                         maxDistance={sun.radius * sun.scale * 4}
                         zoomSpeed={1.0}
-                        rotateSpeed={1}
+                        rotateSpeed={!isPaused ? 1 : 0}
                         panSpeed={0.8}
                         dampingFactor={0.1}
                     />
