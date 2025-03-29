@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+poliastro
+astropy
+sqlalchemy
+alembic 
+psycopg2-binary
+django
+asgiref
