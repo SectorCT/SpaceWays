@@ -10,11 +10,13 @@ interface ManeuverNodeProps {
     scale?: number;
     onUpdate: (id: string, deltaV: Vector3, isDragging: boolean) => void;
     setIsDragging: (isDragging: boolean) => void;
+    isSelected: boolean;
+    onSelect: (id: string) => void;
 }
 
 type Direction = 'prograde' | 'retrograde' | 'normal' | 'antinormal' | 'radialIn' | 'radialOut';
 
-export function ManeuverNode({ id, position, deltaV, scale = 1, onUpdate, setIsDragging }: ManeuverNodeProps) {
+export function ManeuverNode({ id, position, deltaV, scale = 1, onUpdate, setIsDragging, isSelected, onSelect }: ManeuverNodeProps) {
     const groupRef = useRef<Group>(null);
     const { camera } = useThree();
     const [isDragging, setLocalDragging] = useState<Direction | null>(null);
@@ -208,25 +210,43 @@ export function ManeuverNode({ id, position, deltaV, scale = 1, onUpdate, setIsD
         <group 
             ref={groupRef} 
             position={position}
+            onPointerDown={(e) => {
+                e.stopPropagation();
+                e.nativeEvent.stopPropagation();
+                onSelect(id);
+            }}
         >
             {/* Center hollow sphere */}
             <Sphere 
                 args={[baseSphereRadius, 32, 32]}
+                onPointerDown={(e) => {
+                    e.stopPropagation();
+                    e.nativeEvent.stopPropagation();
+                    onSelect(id);
+                }}
             >
-                <meshBasicMaterial color="#ffffff" wireframe={true} />
+                <meshBasicMaterial 
+                    color={isSelected ? "#ffffff" : "#888888"} 
+                    wireframe={isSelected} 
+                />
             </Sphere>
 
-            {/* Prograde/Retrograde handles */}
-            {createPuller('prograde', [0, 0, baseHandleLength], [Math.PI/2, 0, 0])}
-            {createPuller('retrograde', [0, 0, -baseHandleLength], [Math.PI/2, 0, 0])}
+            {/* Only show handles when selected */}
+            {isSelected && (
+                <>
+                    {/* Prograde/Retrograde handles */}
+                    {createPuller('prograde', [0, 0, baseHandleLength], [Math.PI/2, 0, 0])}
+                    {createPuller('retrograde', [0, 0, -baseHandleLength], [Math.PI/2, 0, 0])}
 
-            {/* Normal/Anti-normal handles */}
-            {createPuller('normal', [0, baseHandleLength, 0])}
-            {createPuller('antinormal', [0, -baseHandleLength, 0])}
+                    {/* Normal/Anti-normal handles */}
+                    {createPuller('normal', [0, baseHandleLength, 0])}
+                    {createPuller('antinormal', [0, -baseHandleLength, 0])}
 
-            {/* Radial handles */}
-            {createPuller('radialIn', [-baseHandleLength, 0, 0], [0, 0, Math.PI/2])}
-            {createPuller('radialOut', [baseHandleLength, 0, 0], [0, 0, Math.PI/2])}
+                    {/* Radial handles */}
+                    {createPuller('radialIn', [-baseHandleLength, 0, 0], [0, 0, Math.PI/2])}
+                    {createPuller('radialOut', [baseHandleLength, 0, 0], [0, 0, Math.PI/2])}
+                </>
+            )}
         </group>
     );
 } 

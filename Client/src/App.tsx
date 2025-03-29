@@ -82,6 +82,7 @@ function App() {
     const [timeSpeed, setTimeSpeed] = useState(1); // 1 = real time, 2 = 2x speed, etc.
     const [isPaused, setIsPaused] = useState(false);
     const [selectedBody, setSelectedBody] = useState<CelestialBody | null>(null);
+    const [selectedManeuver, setSelectedManeuver] = useState<string | null>(null);
     const [prompt, setPrompt] = useState<PromptState>({
         isOpen: false,
         position: { x: 0, y: 0 },
@@ -125,15 +126,6 @@ function App() {
         setSelectedBody(null);
     };
 
-    // Handle background clicks to deselect
-    const handleBackgroundClick = (e: React.MouseEvent) => {
-        console.log("Background clicked");
-        // Only deselect if clicking on the canvas background, not on UI elements
-        if (selectedBody && e.target === e.currentTarget) {
-            setSelectedBody(null);
-        }
-    };
-
     const handleOrbitClick = (event: MouseEvent, buttons: PromptButton[]) => {
         console.log("Orbit clicked");
         event.preventDefault();
@@ -150,8 +142,9 @@ function App() {
                     position: hoverPoint,
                     deltaV: newDeltaV.clone()
                 };
-                setManeuverNodes(prev => [...prev, newNode]);
+                setManeuverNodes([newNode]); // Replace array instead of adding to it
                 setCurrentManeuverVector(newDeltaV);
+                setSelectedManeuver(null); // Deselect any existing node
                 closePrompt();
             }
         } else {
@@ -179,14 +172,30 @@ function App() {
         setCurrentManeuverVector(deltaV.clone());
     };
 
+    const handleManeuverSelect = (id: string) => {
+        console.log("Selecting maneuver:", id);
+        setSelectedManeuver(prev => {
+            const newSelection = prev === id ? null : id;
+            console.log("New selection:", newSelection);
+            return newSelection;
+        });
+    };
+
     return (
         <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
             {/* Single Canvas for all 3D content */}
-            <div 
-                style={{ width: '100%', height: '100%' }}
-                onClick={handleBackgroundClick}
-            >
-                <Canvas camera={{ position: [0, 0, 100], fov: 45 }}>
+            <div style={{ width: '100%', height: '100%' }}>
+                <Canvas 
+                    camera={{ position: [0, 0, 100], fov: 45 }}
+                    onPointerMissed={() => {
+                        if (selectedBody) {
+                            setSelectedBody(null);
+                        }
+                        if (selectedManeuver) {
+                            setSelectedManeuver(null);
+                        }
+                    }}
+                >
                     {/* Background stars - positioned far behind everything */}
                     <Stars 
                         radius={300} 
@@ -218,6 +227,7 @@ function App() {
                         color="#00ff00" 
                         onOrbitClick={handleOrbitClick}
                         maneuverNodes={maneuverNodes}
+                        selectedManeuver={selectedManeuver}
                     />
                     
                     {/* Render all maneuver nodes */}
@@ -230,15 +240,17 @@ function App() {
                             scale={2}
                             onUpdate={handleManeuverUpdate}
                             setIsDragging={setIsDraggingHandle}
+                            isSelected={selectedManeuver === node.id}
+                            onSelect={handleManeuverSelect}
                         />
                     ))}
                     
                     {/* Controls */}
                     <OrbitControls 
-                        enablePan={!isDraggingHandle}
-                        enableZoom={!isDraggingHandle}
-                        enableRotate={!isDraggingHandle}
-                        enabled={!isDraggingHandle}
+                        enablePan={!isDraggingHandle && !selectedManeuver}
+                        enableZoom={!isDraggingHandle && !selectedManeuver}
+                        enableRotate={!isDraggingHandle && !selectedManeuver}
+                        enabled={!isDraggingHandle && !selectedManeuver}
                     />
                 </Canvas>
             </div>
@@ -315,7 +327,7 @@ function App() {
                 onClose={closePrompt}
             />
         </div>
-    )
+    );
 }
 
 export default App;

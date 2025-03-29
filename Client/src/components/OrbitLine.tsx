@@ -18,6 +18,7 @@ interface OrbitLineProps {
     gapSize?: number;
     onOrbitClick?: (event: MouseEvent, buttons: PromptButton[]) => void;
     maneuverNodes?: { position: THREE.Vector3 }[];
+    selectedManeuver?: string | null;
 }
 
 export function OrbitLine({ 
@@ -28,7 +29,8 @@ export function OrbitLine({
     dashSize = 2,
     gapSize = 2,
     onOrbitClick,
-    maneuverNodes = []
+    maneuverNodes = [],
+    selectedManeuver = null
 }: OrbitLineProps) {
     const points = useRef<THREE.Vector3[]>([]);
     const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
@@ -111,6 +113,12 @@ export function OrbitLine({
     const handleTubeHover = (event: ThreeEvent<PointerEvent>) => {
         event.stopPropagation();
         
+        // Don't show hover when a maneuver is selected
+        if (selectedManeuver) {
+            setHoverPoint(null);
+            return;
+        }
+        
         // Find the closest point on the curve
         const mousePoint = event.point;
         const curvePoints = curve.getPoints(200);
@@ -140,6 +148,10 @@ export function OrbitLine({
 
     const handleTubeClick = (event: ThreeEvent<MouseEvent>) => {
         event.stopPropagation();
+        // Don't allow orbit clicks when a maneuver is selected
+        if (selectedManeuver) {
+            return;
+        }
         if (onOrbitClick && hoverPoint) {
             const buttons: PromptButton[] = [
                 {
@@ -176,9 +188,9 @@ export function OrbitLine({
             
             {/* Invisible tube for hover detection */}
             <mesh 
-                onPointerMove={handleTubeHover} 
-                onPointerOut={handleTubeUnhover}
-                onClick={handleTubeClick}
+                onPointerMove={selectedManeuver ? undefined : handleTubeHover} 
+                onPointerOut={selectedManeuver ? undefined : handleTubeUnhover}
+                onClick={selectedManeuver ? undefined : handleTubeClick}
             >
                 <tubeGeometry args={[curve, 200, 5, 8, false]} />
                 <meshBasicMaterial transparent opacity={0} />
