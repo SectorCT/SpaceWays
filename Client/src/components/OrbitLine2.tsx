@@ -38,9 +38,11 @@ export function OrbitLine2({
 }: OrbitLine2Props) {
     const [points, setPoints] = useState<THREE.Vector3[]>([]);
     const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
+    const baseSize = 50000;
+    const [scale, setScale] = useState(baseSize);
     const sphereRef = useRef<THREE.Mesh>(null);
     const { camera, size } = useThree();
-    const baseSize = 0.5;
+    
 
     // Function to convert 3D position to screen coordinates
     const toScreenPosition = (position: THREE.Vector3) => {
@@ -66,9 +68,11 @@ export function OrbitLine2({
     // Update sphere size based on camera distance
     useFrame(() => {
         if (sphereRef.current && hoverPoint) {
-            const distance = camera.position.distanceTo(new THREE.Vector3(...hoverPoint.toArray()));
-            const scale = distance * 0.01;
-            sphereRef.current.scale.setScalar(scale);
+           
+            const distance = camera.position.distanceTo(hoverPoint);
+            // Scale factor that increases with distance but not linearly
+            const scale = Math.pow(distance, 0.8) / 20;
+            setScale(scale);
         }
     });
 
@@ -125,7 +129,7 @@ export function OrbitLine2({
         
         // Find the closest point on the curve
         const mousePoint = event.point;
-        const curvePoints = curve.getPoints(200);
+        const curvePoints = points;
         let closestPoint = curvePoints[0];
         let minDistance = mousePoint.distanceTo(curvePoints[0]);
 
@@ -156,7 +160,7 @@ export function OrbitLine2({
         if (selectedManeuver) return;
         
         const mousePoint = event.point;
-        const curvePoints = curve.getPoints(200);
+        const curvePoints = points;
         let closestPoint = curvePoints[0];
         let minDistance = mousePoint.distanceTo(curvePoints[0]);
 
@@ -171,7 +175,20 @@ export function OrbitLine2({
         // Check if the click point would be near any existing maneuver node
         const screenPos = toScreenPosition(closestPoint);
         if (!isNearManeuverNode(screenPos) && onOrbitClick) {
-            onOrbitClick(event.nativeEvent, []);
+            // Check if it's a right click
+            if (event.nativeEvent.button === 2) {
+                onOrbitClick(event.nativeEvent, [
+                    {
+                        label: "Create Maneuver",
+                        onClick: () => {
+                            // Return the position so it can be used by the parent
+                            return closestPoint.clone();
+                        }
+                    }
+                ]);
+            } else {
+                onOrbitClick(event.nativeEvent, []);
+            }
         }
     };
     
@@ -188,29 +205,41 @@ export function OrbitLine2({
                     dashScale={dashScale}
                     dashSize={dashSize}
                     gapSize={gapSize}
+                    renderOrder={3000}
                 />
             )}
             
-            {/* Invisible tube for hover detection */}
+            {/* Invisible line for hover detection */}
             {points.length > 0 && (
-                <mesh 
+                <Line
+                    points={points}
+                    color="#000000"
+                    lineWidth={5}
+                    transparent={true}
+                    opacity={0}
                     onPointerMove={selectedManeuver ? undefined : handleTubeHover} 
                     onPointerOut={selectedManeuver ? undefined : handleTubeUnhover}
                     onClick={selectedManeuver ? undefined : handleTubeClick}
-                >
-                    <tubeGeometry args={[curve, 200, 5, 8, false]} />
-                    <meshBasicMaterial transparent opacity={0} />
-                </mesh>
+                    onContextMenu={(e: React.MouseEvent) => {
+                        handleTubeClick(e as unknown as ThreeEvent<MouseEvent>);
+                    }}
+                    renderOrder={2000}
+                />
             )}
 
             {/* Hover indicator sphere */}
             {hoverPoint && (
                 <Sphere 
                     ref={sphereRef}
-                    position={hoverPoint.toArray()} 
-                    args={[baseSize, 16, 16]}
+                    position={hoverPoint.toArray()}
+                    args={[scale, 32, 32]}
                 >
-                    <meshBasicMaterial color={color} />
+                    <meshBasicMaterial 
+                        color={"#ffffff"} 
+                        opacity={1}
+                        transparent={true}
+                        depthWrite={false}
+                    />
                 </Sphere>
             )}
         </group>

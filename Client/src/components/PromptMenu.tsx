@@ -10,9 +10,10 @@ interface PromptMenuProps {
     position: { x: number; y: number };
     buttons: PromptButton[];
     onClose: () => void;
+    onButtonClick: (button: PromptButton) => void;
 }
 
-export function PromptMenu({ isOpen, position, buttons, onClose }: PromptMenuProps) {
+export function PromptMenu({ isOpen, position, buttons, onClose, onButtonClick }: PromptMenuProps) {
     useEffect(() => {
         if (isOpen) {
             const handleClickOutside = (event: MouseEvent) => {
@@ -54,8 +55,7 @@ export function PromptMenu({ isOpen, position, buttons, onClose }: PromptMenuPro
                     key={index}
                     onClick={(e) => {
                         e.stopPropagation();
-                        button.onClick();
-                        onClose();
+                        onButtonClick(button);
                     }}
                     className="orbit-prompt-button"
                 >

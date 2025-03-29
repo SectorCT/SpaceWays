@@ -99,6 +99,7 @@ function App() {
     "normal",
   );
   const [showZoomLevelIndicator, setShowZoomLevelIndicator] = useState(false);
+  const [maneuverNodeScale, setManeuverNodeScale] = useState(1);
 
   const [simulationStartTime, _] = useState<Date>(new Date());
   const timeControlsRef = useRef<HTMLDivElement>(null);
@@ -388,13 +389,30 @@ function App() {
   const handleOrbitClick = (event: MouseEvent, buttons: PromptButton[]) => {
     event.preventDefault();
 
-    // Get the hover point from the button's onClick return value
-    const createManeuverButton = buttons.find(
-      (b) => b.label === "Create Maneuver Node",
-    );
-    if (createManeuverButton) {
-      const hoverPoint = createManeuverButton.onClick();
+    // If there are no buttons, just close any existing prompt
+    if (!buttons || buttons.length === 0) {
+      closePrompt();
+      return;
+    }
+
+    // Show the prompt menu with the provided buttons
+    setPrompt({
+      isOpen: true,
+      position: { x: event.clientX, y: event.clientY },
+      buttons,
+    });
+  };
+
+  const closePrompt = () => {
+    setPrompt((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  // Add a new function to handle prompt button clicks
+  const handlePromptButtonClick = (button: PromptButton) => {
+    if (button.label === "Create Maneuver") {
+      const hoverPoint = button.onClick();
       if (hoverPoint instanceof Vector3) {
+        console.log("Creating new maneuver node at position:", hoverPoint);
         const newDeltaV = new Vector3(0, 0, 0);
         // Create new node with zero deltaV
         const newNode: ManeuverNodeData = {
@@ -402,22 +420,13 @@ function App() {
           position: hoverPoint,
           deltaV: newDeltaV.clone(),
         };
+        console.log("New maneuver node created:", newNode);
         setManeuverNodes([newNode]); // Replace array instead of adding to it
         setCurrentManeuverVector(newDeltaV);
         setSelectedManeuver(null); // Deselect any existing node
-        closePrompt();
       }
-    } else {
-      setPrompt({
-        isOpen: true,
-        position: { x: event.clientX, y: event.clientY },
-        buttons,
-      });
     }
-  };
-
-  const closePrompt = () => {
-    setPrompt((prev) => ({ ...prev, isOpen: false }));
+    closePrompt();
   };
 
   const handleManeuverUpdate = (
@@ -888,6 +897,18 @@ function App() {
     THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
   }, []);
 
+  // Calculate maneuver node scale based on camera distance
+  useEffect(() => {
+    if (orbitControlsRef.current && maneuverNodes.length > 0) {
+      const camera = orbitControlsRef.current.object;
+      const nodePosition = maneuverNodes[0].position;
+      const distance = camera.position.distanceTo(nodePosition);
+      // Simplified scale calculation
+      const scale = Math.pow(distance, 0.6) / 5;
+      setManeuverNodeScale(scale);
+    }
+  }, [orbitControlsRef.current, maneuverNodes]);
+
     return (
         <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
             {/* Single Canvas for all 3D content */}
@@ -971,7 +992,7 @@ function App() {
               id={node.id}
               position={node.position}
               deltaV={node.deltaV}
-              scale={2}
+              scale={maneuverNodeScale} // Removed the multiplier since we're using a better scale calculation
               onUpdate={handleManeuverUpdate}
               setIsDragging={setIsDraggingHandle}
               isSelected={selectedManeuver === node.id}
@@ -1106,6 +1127,7 @@ function App() {
         position={prompt.position}
         buttons={prompt.buttons}
         onClose={closePrompt}
+        onButtonClick={handlePromptButtonClick}
       />
 
       {/* Zoom level indicator */}

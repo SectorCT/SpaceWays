@@ -39,7 +39,7 @@ export function ManeuverNode({
   id,
   position,
   deltaV,
-  scale = 1,
+  scale = 10000,
   onUpdate,
   setIsDragging,
   isSelected,
@@ -56,12 +56,12 @@ export function ManeuverNode({
   const raycaster = useRef<Raycaster>(new Raycaster());
 
   // Base sizes that will be scaled by camera distance
-  const baseHandleSize = 0.3;
-  const baseHandleLength = 1.5;
-  const baseSphereRadius = 0.4;
-  const baseHandleThickness = 0.1;
-  const deltaVSensitivity = 0.01;
-  const dragScale = 0.3; // Scale factor for drag distance
+  const baseHandleSize = 20.0;
+  const baseHandleLength = 50.0;
+  const baseSphereRadius = 15.0;
+  const baseHandleThickness = 3.0;
+  const deltaVSensitivity = 1;
+  const dragScale = 0.003;
 
   const [handlePositions, setHandlePositions] = useState<
     Record<Direction, Vector3>
@@ -102,14 +102,23 @@ export function ManeuverNode({
     }
   }, [isDragging]);
 
+  // Add console log when component mounts
+  useEffect(() => {
+    console.log("ManeuverNode mounted with props:", {
+      id,
+      position,
+      deltaV,
+      scale,
+      isSelected
+    });
+  }, [id, position, deltaV, scale, isSelected]);
+
   // Update sizes based on camera distance
   useFrame(() => {
     if (groupRef.current) {
       const distance = camera.position.distanceTo(position);
-      const targetScale = distance * 0.01 * scale;
-      const currentScale = groupRef.current.scale.x;
-      const lerped = currentScale + (targetScale - currentScale) * 0.1;
-      groupRef.current.scale.setScalar(lerped);
+      const targetScale = Math.pow(distance, 0.6) / 5;
+      groupRef.current.scale.setScalar(targetScale);
     }
   });
 
@@ -146,9 +155,8 @@ export function ManeuverNode({
             [isDragging]: newPosition
           }));
 
-          // Calculate deltaV change based on handle extension
-          const extension = length - baseHandleLength;
-          const deltaVChange = extension * deltaVSensitivity;
+          // Calculate deltaV change based on drag projection directly
+          const deltaVChange = dragProjection * deltaVSensitivity;
 
           // Update deltaV based on direction
           const newDeltaV = dragStartDeltaV.current!.clone();
@@ -273,8 +281,10 @@ export function ManeuverNode({
         }}
       >
         <meshBasicMaterial
-          color={isSelected ? "#ffffff" : "#888888"}
+          color={isSelected ? "#ffffff" : "#ff0000"}
           wireframe={isSelected}
+          transparent={true}
+          opacity={0.8}
         />
       </Sphere>
 
