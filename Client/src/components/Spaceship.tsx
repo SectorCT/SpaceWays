@@ -26,22 +26,67 @@ export function Spaceship({
   const [position, setPosition] = useState<THREE.Vector3>(new THREE.Vector3());
   const lastTimeRef = useRef(currentTime);
 
-  // Load the spaceship model
-  const materials = useLoader(MTLLoader, "/src/assets/Spaceship/spaceship.mtl");
-  materials.preload();
-  const obj = useLoader(OBJLoader, "/src/assets/Spaceship/spaceship.obj", (loader) => {
-    loader.setMaterials(materials);
+  // Load textures
+  const textureLoader = new THREE.TextureLoader();
+  const baseColorTexture = textureLoader.load(
+    "/src/assets/Spaceship/Material.001_Base_color.jpg",
+  );
+  const emissiveTexture = textureLoader.load(
+    "/src/assets/Spaceship/Material.001_Emissive.jpg",
+  );
+  const metallicTexture = textureLoader.load(
+    "/src/assets/Spaceship/Material.001_Metallic.jpg",
+  );
+  const roughnessTexture = textureLoader.load(
+    "/src/assets/Spaceship/Material.001_Roughness.jpg",
+  );
+  const normalTexture = textureLoader.load(
+    "/src/assets/Spaceship/Material.001_Normal_DirectX.jpg",
+  );
+  const aoTexture = textureLoader.load(
+    "/src/assets/Spaceship/Material.001_Mixed_AO.jpg",
+  );
+
+  // Create PBR material with textures
+  const material = new THREE.MeshStandardMaterial({
+    map: baseColorTexture,
+    emissiveMap: emissiveTexture,
+    metalnessMap: metallicTexture,
+    roughnessMap: roughnessTexture,
+    normalMap: normalTexture,
+    aoMap: aoTexture,
+    metalness: 0.8,
+    roughness: 0.2,
+    emissive: new THREE.Color(0x00ffff),
+    emissiveIntensity: 0.5,
   });
+
+  // Load the spaceship model
+  const obj = useLoader(OBJLoader, "/src/assets/Spaceship/spaceship.obj");
+
+  // Apply material to all meshes in the model
+  useEffect(() => {
+    if (obj) {
+      obj.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.material = material;
+        }
+      });
+    }
+  }, [obj, material]);
 
   useFrame(() => {
     if (meshRef.current) {
       // Update position based on simulation time
       const newPosition = getOrbitalPosition(body, currentTime);
       meshRef.current.position.set(newPosition.x, newPosition.y, newPosition.z);
-      setPosition(new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z));
+      setPosition(
+        new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z),
+      );
 
       // Calculate rotation based on time difference
-      const timeDiff = (currentTime.getTime() - lastTimeRef.current.getTime()) / 1000; // Convert to seconds
+      const timeDiff =
+        (currentTime.getTime() - lastTimeRef.current.getTime()) / 1000; // Convert to seconds
       const rotationSpeed = (2 * Math.PI) / body.orbit.orbital_period;
       meshRef.current.rotation.y += rotationSpeed * timeDiff;
 
@@ -84,4 +129,3 @@ export function Spaceship({
     </Suspense>
   );
 }
-
