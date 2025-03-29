@@ -1,6 +1,12 @@
 import { useRef, useState, useEffect } from "react";
 import { Sphere, Cylinder } from "@react-three/drei";
-import { Vector3, Group, Raycaster, BufferGeometry, Float32BufferAttribute } from "three";
+import {
+  Vector3,
+  Group,
+  Raycaster,
+  BufferGeometry,
+  Float32BufferAttribute,
+} from "three";
 import { useFrame, useThree, ThreeEvent } from "@react-three/fiber";
 
 const directionVectors: Record<Direction, Vector3> = {
@@ -57,8 +63,11 @@ export function ManeuverNode({
   const baseSphereRadius = 0.4;
   const baseHandleThickness = 0.1;
   const deltaVSensitivity = 0.01;
+  const dragScale = 0.3; // Scale factor for drag distance
 
-  const [handlePositions, setHandlePositions] = useState<Record<Direction, Vector3>>({
+  const [handlePositions, setHandlePositions] = useState<
+    Record<Direction, Vector3>
+  >({
     prograde: new Vector3(0, 0, baseHandleLength),
     retrograde: new Vector3(0, 0, -baseHandleLength),
     normal: new Vector3(0, baseHandleLength, 0),
@@ -108,78 +117,90 @@ export function ManeuverNode({
 
   // Handle drag updates
   useFrame(() => {
-    if (isDragging && dragStartPos.current && dragStartOffset.current && dragStartDeltaV.current) {
+    if (
+      isDragging &&
+      dragStartPos.current &&
+      dragStartOffset.current &&
+      dragStartDeltaV.current
+    ) {
       raycaster.current.setFromCamera(mouse, camera);
-      const intersects = raycaster.current.intersectObjects(groupRef.current?.children || [], true);
+      const intersects = raycaster.current.intersectObjects(
+        groupRef.current?.children || [],
+        true,
+      );
 
       if (intersects.length > 0) {
         const intersect = intersects[0];
         const axisVector = directionVectors[isDragging].clone().normalize();
         const dragVector = intersect.point.clone().sub(dragStartPos.current!);
-        const projection = axisVector.multiplyScalar(dragVector.dot(axisVector));
 
-        // Calculate the new position
-        const newPosition = projection.clone().add(
-          directionVectors[isDragging].clone().multiplyScalar(baseHandleLength)
-        );
+        // Calculate the projection of drag onto the axis and scale it
+        const dragProjection = dragVector.dot(axisVector) * dragScale;
+
+        // Calculate the new position by adding the scaled projection to the base position
+        const newPosition = directionVectors[isDragging]
+          .clone()
+          .multiplyScalar(baseHandleLength)
+          .add(axisVector.multiplyScalar(dragProjection));
 
         // Calculate the length from center
         const length = newPosition.length();
 
         // Only update if the length is greater than or equal to baseHandleLength
-        // and the direction matches the handle's direction
         if (length >= baseHandleLength) {
-          const dotProduct = newPosition.dot(directionVectors[isDragging]);
-          if (dotProduct > 0) {
-            // Update handle position
-            setHandlePositions(prev => ({
-              ...prev,
-              [isDragging]: newPosition
-            }));
+          // Update handle position
+          setHandlePositions((prev) => ({
+            ...prev,
+            [isDragging]: newPosition,
+          }));
 
-            // Calculate deltaV change based on handle extension
-            const extension = length - baseHandleLength;
-            const deltaVChange = extension * deltaVSensitivity;
+          // Calculate deltaV change based on handle extension
+          const extension = length - baseHandleLength;
+          const deltaVChange = extension * deltaVSensitivity;
 
-            // Update deltaV based on direction
-            const newDeltaV = dragStartDeltaV.current!.clone();
-            switch (isDragging) {
-              case 'prograde':
-                newDeltaV.z += deltaVChange;
-                break;
-              case 'retrograde':
-                newDeltaV.z -= deltaVChange;
-                break;
-              case 'normal':
-                newDeltaV.y += deltaVChange;
-                break;
-              case 'antinormal':
-                newDeltaV.y -= deltaVChange;
-                break;
-              case 'radialIn':
-                newDeltaV.x -= deltaVChange;
-                break;
-              case 'radialOut':
-                newDeltaV.x += deltaVChange;
-                break;
-            }
-
-            setCurrentDeltaV(newDeltaV);
-            onUpdate(id, newDeltaV, true);
+          // Update deltaV based on direction
+          const newDeltaV = dragStartDeltaV.current!.clone();
+          switch (isDragging) {
+            case "prograde":
+              newDeltaV.z += deltaVChange;
+              break;
+            case "retrograde":
+              newDeltaV.z -= deltaVChange;
+              break;
+            case "normal":
+              newDeltaV.y += deltaVChange;
+              break;
+            case "antinormal":
+              newDeltaV.y -= deltaVChange;
+              break;
+            case "radialIn":
+              newDeltaV.x -= deltaVChange;
+              break;
+            case "radialOut":
+              newDeltaV.x += deltaVChange;
+              break;
           }
+
+          setCurrentDeltaV(newDeltaV);
+          onUpdate(id, newDeltaV, true);
         }
       }
     }
   });
 
-  const handlePullerDragStart = (event: ThreeEvent<PointerEvent>, direction: Direction) => {
+  const handlePullerDragStart = (
+    event: ThreeEvent<PointerEvent>,
+    direction: Direction,
+  ) => {
     event.stopPropagation();
     event.nativeEvent.stopPropagation();
     setIsDragging(true);
     setLocalDragging(direction);
     dragStartPos.current = event.point;
     dragStartDeltaV.current = currentDeltaV.clone();
-    dragStartOffset.current = event.point.clone().sub(handlePositions[direction]);
+    dragStartOffset.current = event.point
+      .clone()
+      .sub(handlePositions[direction]);
     lastUpdateTime.current = Date.now();
     document.body.style.cursor = "grabbing";
   };
