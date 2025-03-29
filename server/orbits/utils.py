@@ -69,10 +69,22 @@ def get_trajectory_between_dates(trajectory_dict: dict, start_date: str, end_dat
     start_seconds = date_to_seconds(start_date)
     end_seconds = date_to_seconds(end_date)
     
+    print(f"Filtering trajectory between {start_seconds} and {end_seconds} seconds")
+    print(f"Total points in trajectory: {len(trajectory_dict)}")
+    
+    # Get min and max timestamps in the data
+    if trajectory_dict:
+        timestamps = [float(t) for t in trajectory_dict.keys()]
+        min_time = min(timestamps)
+        max_time = max(timestamps)
+        print(f"Data range: {min_time} to {max_time} seconds")
+        print(f"Data range in dates: {seconds_to_date(min_time)} to {seconds_to_date(max_time)}")
+    
     filtered_trajectory = {}
     for timestamp, position in trajectory_dict.items():
         timestamp_float = float(timestamp)
         if start_seconds <= timestamp_float <= end_seconds:
             filtered_trajectory[timestamp] = position
             
+    print(f"Points after filtering: {len(filtered_trajectory)}")
     return filtered_trajectory 

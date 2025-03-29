@@ -1,21 +1,21 @@
 # main.py (or wherever)
 
-import os
-import sys
 from pathlib import Path
 from asgiref.sync import sync_to_async
 import numpy as np
+from typing import List, Optional
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from django.conf import settings
+import django
+import os
+import sys
 
-# Add the project root to the Python path
 project_root = str(Path(__file__).parent.parent)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# Now we can import Django
-import django
-from django.conf import settings
 
-# Set up Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'server.settings')
 try:
     django.setup()
@@ -27,11 +27,7 @@ except Exception as e:
     print(f"Files in project root: {os.listdir(project_root)}")
     sys.exit(1)
 
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
 
-# Import Django models after Django setup
 try:
     from orbits.models import BodyModel
     from orbits.simulation import (
@@ -134,10 +130,8 @@ async def simulate_n_bodies(bodies_data: List[dict]):
 @app.post("/maneuver/", summary="Apply a maneuver to a body and simulate its trajectory")
 async def apply_maneuver_endpoint(maneuver_data: ManeuverInput):
     try:
-        # Get all bodies for simulation
         bodies = await get_all_bodies()
         
-        # Find the target body
         target_body = next((b for b in bodies if b.name == maneuver_data.body_name), None)
         if target_body is None:
             raise HTTPException(status_code=404, detail=f"Body {maneuver_data.body_name} not found")

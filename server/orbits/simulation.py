@@ -18,13 +18,17 @@ def compute_accelerations(bodies):
     n = len(bodies)
     accelerations = [np.zeros(3) for _ in range(n)]
 
-    for i in range(n):
-        for j in range(n):
+    for i, body in enumerate(bodies):
+        # Skip acceleration calculation for the Sun - it stays fixed
+        if body.name == "Sun":
+            continue
+            
+        for j, other_body in enumerate(bodies):
             if i != j:
-                r_ij = bodies[j].position - bodies[i].position
+                r_ij = other_body.position - body.position
                 dist = np.linalg.norm(r_ij)
                 if dist > 0:
-                    accelerations[i] += G * bodies[j].mass * r_ij / dist**3
+                    accelerations[i] += G * other_body.mass * r_ij / dist**3
 
     return accelerations
 
@@ -65,6 +69,11 @@ def apply_maneuver(body: BodyModel, delta_velocity: np.ndarray, simulation_time:
         delta_velocity: The velocity change vector in km/s
         simulation_time: The time at which to apply the maneuver (if None, use current state)
     """
+    # Don't allow maneuvers on the Sun
+    if body.name == "Sun":
+        print("Warning: Cannot apply maneuver to the Sun as it is fixed at the origin")
+        return body
+        
     if simulation_time is not None:
         # Get the state at the specified time from history
         last_state = get_last_state(body)
@@ -163,21 +172,24 @@ def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=STEPS_PER_QUARTER, snaps
     # If start_time is provided, get the state at that time for each body
     if start_time is not None:
         for body in bodies:
-            position, velocity = get_state_at_time(body, start_time)
-            body.position = position
-            body.velocity = velocity
-            body.save()
+            if body.name != "Sun":  # Skip Sun as it stays at origin
+                position, velocity = get_state_at_time(body, start_time)
+                body.position = position
+                body.velocity = velocity
+                body.save()
 
     accelerations = compute_accelerations(bodies)
 
     for step in range(1, steps+1):
         for i, body in enumerate(bodies):
-            body.position = body.position + body.velocity * dt + 0.5 * accelerations[i] * dt**2
+            if body.name != "Sun":  # Skip Sun as it stays at origin
+                body.position = body.position + body.velocity * dt + 0.5 * accelerations[i] * dt**2
 
         new_acc = compute_accelerations(bodies)
 
         for i, body in enumerate(bodies):
-            body.velocity = body.velocity + 0.5 * (accelerations[i] + new_acc[i]) * dt
+            if body.name != "Sun":  # Skip Sun as it stays at origin
+                body.velocity = body.velocity + 0.5 * (accelerations[i] + new_acc[i]) * dt
 
         current_time += dt
 
