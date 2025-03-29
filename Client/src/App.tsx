@@ -82,6 +82,39 @@ function App() {
         return () => clearInterval(interval);
     }, [timeSpeed, isPaused]);
 
+    // Add keyboard controls for pause, speed up, and slow down
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Skip if user is typing in an input field
+            if (e.target instanceof HTMLInputElement || 
+                e.target instanceof HTMLTextAreaElement ||
+                e.target instanceof HTMLSelectElement) {
+                return;
+            }
+            
+            switch (e.key) {
+                case ' ': // Space bar for pause/resume
+                    setIsPaused(prevPaused => !prevPaused);
+                    break;
+                case '>': // > for speed up
+                case '.': // Also allow period key (unshifted >)
+                    handleSpeedChange(timeSpeed * 2);
+                    break;
+                case '<': // < for slow down
+                case ',': // Also allow comma key (unshifted <)
+                    handleSpeedChange(Math.max(1, timeSpeed / 2));
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        
+        // Clean up event listener
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [timeSpeed]); // Only re-add listener if timeSpeed changes
+
     // Handle screen edges for date picker
     useEffect(() => {
         if (isDatePickerOpen && timeControlsRef.current) {
@@ -213,6 +246,7 @@ function App() {
                     <button 
                         className={`time-button pause-button ${isPaused ? 'paused' : ''}`}
                         onClick={() => setIsPaused(!isPaused)}
+                        title="Press Space to pause/resume"
                     >
                         {isPaused ? 'Resume' : 'Pause'}
                     </button>
@@ -222,6 +256,7 @@ function App() {
                     <button 
                         className="time-button speed-button slower"
                         onClick={() => handleSpeedChange(Math.max(1, timeSpeed / 2))}
+                        title="Press < to slow down"
                     >
                         <span className="speed-icon">←</span> Slower
                     </button>
@@ -229,9 +264,14 @@ function App() {
                     <button 
                         className="time-button speed-button faster"
                         onClick={() => handleSpeedChange(timeSpeed * 2)}
+                        title="Press > to speed up"
                     >
                         Faster <span className="speed-icon">→</span>
                     </button>
+                </div>
+                
+                <div className="keyboard-shortcuts">
+                    Keyboard: Space = pause, &lt; = slower, &gt; = faster
                 </div>
                 
                 <div className="controls-row" style={{ marginTop: '12px' }}>

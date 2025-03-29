@@ -275,3 +275,11 @@ body {
     width: 100%;
   }
 }
+
+.keyboard-shortcuts {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  margin-top: 8px;
+  font-style: italic;
+}

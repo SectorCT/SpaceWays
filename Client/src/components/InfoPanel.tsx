@@ -43,10 +43,40 @@ export function InfoPanel({ selectedBody, onClose }: InfoPanelProps) {
   if (!selectedBody) return null;
 
   const formatMass = (mass: number) => {
-    if (mass >= 1e24) return `${(mass / 1e24).toFixed(2)} × 10²⁴ kg`;
-    if (mass >= 1e21) return `${(mass / 1e21).toFixed(2)} × 10²¹ kg`;
-    return `${mass.toExponential(2)} kg`;
+    const superscriptMap: { [key: string]: string } = {
+      '0': '⁰',
+      '1': '¹',
+      '2': '²',
+      '3': '³',
+      '4': '⁴',
+      '5': '⁵',
+      '6': '⁶',
+      '7': '⁷',
+      '8': '⁸',
+      '9': '⁹',
+    };
+  
+    const toSuperscript = (exponent: number) => {
+      return exponent.toString().split('').map(digit => superscriptMap[digit] || digit).join('');
+    };
+  
+    const exponents = [
+      { threshold: 1e24 },
+      { threshold: 1e21 }
+    ];
+  
+    for (const { threshold } of exponents) {
+      if (mass >= threshold) {
+        const exponent = Math.floor(Math.log10(mass));
+        const base = mass / Math.pow(10, exponent);
+        return `${base.toFixed(2)} × 10${toSuperscript(exponent)} kg`;
+      }
+    }
+  
+    return `${mass.toExponential(2)} kg`; // For smaller masses
   };
+  
+  
 
   const formatDistance = (distance: number) => {
     if (distance >= 1000) return `${(distance / 1000).toFixed(2)} million km`;
