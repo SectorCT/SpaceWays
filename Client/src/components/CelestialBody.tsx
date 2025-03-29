@@ -1,11 +1,10 @@
 import { useRef, useEffect, useState } from 'react'
-import { useFrame, useLoader } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import { Sphere } from '@react-three/drei'
 import { CelestialBody } from '../types/CelestialBody'
 import { getPositionFromOrbit2 } from '../getPositionFromOrbit'
 import * as THREE from 'three'
 import { SelectionIndicator } from './SelectionIndicator'
-import { TextureLoader } from 'three'
 
 interface CelestialBodyProps {
     body: CelestialBody;
@@ -32,8 +31,6 @@ export function CelestialBodyComponent({
     const lastTimeRef = useRef<Date>(currentTime)
     const materialRef = useRef<THREE.MeshStandardMaterial>(null)
     const [hovered, setHovered] = useState(false)
-    const [rotationAngle, setRotationAngle] = useState(0)
-
     // Load texture if provided
     useEffect(() => {
         if (body.texture) {
