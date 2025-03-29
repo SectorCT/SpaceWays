@@ -10,7 +10,7 @@ import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
 import { Suspense } from "react";
 
 // Rotation offset in radians (x, y, z)
-const ROTATION_OFFSET = new THREE.Vector3(0.80, 0, 1.5); // You can adjust these values later
+const ROTATION_OFFSET = new THREE.Vector3(0, 0, 0); // You can adjust these values later
 
 interface CelestialBodyProps {
   body: CelestialBody;
@@ -83,33 +83,37 @@ export function Spaceship({
       // Update position based on simulation time
       const newPosition = getOrbitalPosition(body, currentTime);
       meshRef.current.position.set(newPosition.x, newPosition.y, newPosition.z);
-      setPosition(
-        new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z),
-      );
+      setPosition(new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z));
 
-      // Calculate orbital velocity for orientation
-      const timeDiff =
-        (currentTime.getTime() - lastTimeRef.current.getTime()) / 1000;
-      const angle = (2 * Math.PI * timeDiff) / body.orbit.orbital_period;
+      // Calculate orbital angle based on time
+      const orbitalProgress = (currentTime.getTime() % (body.orbit.orbital_period * 1000)) / (body.orbit.orbital_period * 1000);
+      const angle = 2 * Math.PI * orbitalProgress;
       
-      // Calculate velocity vector
-      const velocity = new THREE.Vector3(
-        Math.sin(angle),
-        -Math.cos(angle) * Math.sin(body.orbit.inclination),
-        -Math.cos(angle) * Math.cos(body.orbit.inclination)
-      );
+      // Calculate the next position to determine direction
+      const nextTime = new Date(currentTime.getTime() + 100);
+      const nextPosition = getOrbitalPosition(body, nextTime);
+      const direction = new THREE.Vector3(
+        nextPosition.x - newPosition.x,
+        nextPosition.y - newPosition.y,
+        nextPosition.z - newPosition.z
+      ).normalize().multiplyScalar(-1);
 
-      // Make the ship face its direction of travel
-      if (velocity.length() > 0) {
-        meshRef.current.lookAt(
-          meshRef.current.position.clone().add(velocity.normalize())
-        );
-        
-        // Apply rotation offset
-        meshRef.current.rotation.x += ROTATION_OFFSET.x;
-        meshRef.current.rotation.y += ROTATION_OFFSET.y;
-        meshRef.current.rotation.z += ROTATION_OFFSET.z;
-      }
+      // Create a rotation matrix to align with orbital path
+      const up = new THREE.Vector3(0, 1, 0);
+      const matrix = new THREE.Matrix4();
+      matrix.lookAt(
+        new THREE.Vector3(0, 0, 0),
+        direction,
+        up
+      );
+      
+      // Apply the rotation
+      meshRef.current.quaternion.setFromRotationMatrix(matrix);
+      
+      // Apply rotation offset
+      meshRef.current.rotateX(ROTATION_OFFSET.x);
+      meshRef.current.rotateY(ROTATION_OFFSET.y);
+      meshRef.current.rotateZ(ROTATION_OFFSET.z);
 
       lastTimeRef.current = currentTime;
     }
