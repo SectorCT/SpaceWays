@@ -26,19 +26,17 @@ export function CelestialBodyComponent({
     const [position, setPosition] = useState<THREE.Vector3>(new THREE.Vector3())
     const materialRef = useRef<THREE.MeshBasicMaterial>(null)
     
-    // Update material color when selection changes
+    // Update material color only based on texture, not selection
     useEffect(() => {
         if (meshRef.current && meshRef.current.material) {
             const material = meshRef.current.material as THREE.MeshBasicMaterial;
-            if (isSelected) {
-                material.color.set(0x88ccff);
-            } else if (texture) {
+            if (texture) {
                 material.color.set(0xffffff);
             } else {
                 material.color.set(body.color);
             }
         }
-    }, [isSelected, texture, body.color]);
+    }, [texture, body.color]);
     
     useEffect(() => {
         if (body.texture) {
@@ -94,6 +92,7 @@ export function CelestialBodyComponent({
     const materialColor = isSelected 
         ? new THREE.Color(0x88ccff) 
         : (texture ? new THREE.Color(0xffffff) : new THREE.Color(body.color));
+    console.log(`Rendering ${body.name} with texture: ${texture ? 'loaded' : 'none'}`);
 
     return (
         <>
@@ -115,7 +114,7 @@ export function CelestialBodyComponent({
             {isSelected && (
                 <SelectionIndicator 
                     position={position} 
-                    radius={body.radius * body.scale} 
+                    radius={body.radius * body.scale}
                 />
             )}
         </>

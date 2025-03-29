@@ -4,11 +4,12 @@ import { CelestialBodyComponent } from "./components/CelestialBody";
 import { OrbitLine } from "./components/OrbitLine";
 import { CelestialBody } from "./types/CelestialBody";
 import { Orbit } from "./types/orbit";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { InfoPanel } from "./components/InfoPanel";
 import { PromptMenu } from "./components/PromptMenu";
 import { ManeuverNode } from "./components/ManeuverNode";
 import { Vector3 } from "three";
+import { DateSelector } from "./components/DateSelector";
 import "./App.css";
 
 interface PromptButton {
@@ -91,6 +92,8 @@ function App() {
     const [maneuverNodes, setManeuverNodes] = useState<ManeuverNodeData[]>([]);
     const [currentManeuverVector, setCurrentManeuverVector] = useState<Vector3>(new Vector3(0, 0, 0));
     const [isDraggingHandle, setIsDraggingHandle] = useState(false);
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const timeControlsRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         let lastTime = Date.now();
@@ -105,6 +108,61 @@ function App() {
 
         return () => clearInterval(interval);
     }, [timeSpeed, isPaused]);
+
+    // Add keyboard controls for pause, speed up, and slow down
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Skip if user is typing in an input field
+            if (e.target instanceof HTMLInputElement || 
+                e.target instanceof HTMLTextAreaElement ||
+                e.target instanceof HTMLSelectElement) {
+                return;
+            }
+            
+            switch (e.key) {
+                case ' ': // Space bar for pause/resume
+                    setIsPaused(prevPaused => !prevPaused);
+                    break;
+                case '>': // > for speed up
+                case '.': // Also allow period key (unshifted >)
+                    handleSpeedChange(timeSpeed * 2);
+                    break;
+                case '<': // < for slow down
+                case ',': // Also allow comma key (unshifted <)
+                    handleSpeedChange(Math.max(1, timeSpeed / 2));
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        
+        // Clean up event listener
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [timeSpeed]); // Only re-add listener if timeSpeed changes
+
+    // Handle screen edges for date picker
+    useEffect(() => {
+        if (isDatePickerOpen && timeControlsRef.current) {
+            const rect = timeControlsRef.current.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            // Check if date picker would go off screen
+            if (rect.left + 400 > viewportWidth) {
+                timeControlsRef.current.classList.add('date-picker-right-aligned');
+            } else {
+                timeControlsRef.current.classList.remove('date-picker-right-aligned');
+            }
+            
+            if (rect.bottom + 400 > viewportHeight) {
+                timeControlsRef.current.classList.add('date-picker-top-aligned');
+            } else {
+                timeControlsRef.current.classList.remove('date-picker-top-aligned');
+            }
+        }
+    }, [isDatePickerOpen]);
 
     const handleSpeedChange = (speed: number) => {
         setTimeSpeed(speed);
@@ -178,6 +236,18 @@ function App() {
             console.log("New selection:", newSelection);
             return newSelection;
         });
+    };
+    // Handle setting a specific date
+    const handleSetDate = (newDate: Date) => {
+        setSimulationTime(newDate);
+        setIsDatePickerOpen(false);
+        // Pause simulation when a specific date is set
+        setIsPaused(true);
+    };
+
+    // Handle showing/hiding the date picker
+    const toggleDatePicker = () => {
+        setIsDatePickerOpen(!isDatePickerOpen);
     };
 
     return (
@@ -255,7 +325,7 @@ function App() {
             </div>
 
             {/* Time controls with new stylish UI */}
-            <div className="time-controls">
+            <div className="time-controls" ref={timeControlsRef}>
                 <div className="time-label">Simulation Time</div>
                 <div className="time-value">{simulationTime.toLocaleString()}</div>
                 
@@ -268,6 +338,7 @@ function App() {
                     <button 
                         className={`time-button pause-button ${isPaused ? 'paused' : ''}`}
                         onClick={() => setIsPaused(!isPaused)}
+                        title="Press Space to pause/resume"
                     >
                         {isPaused ? 'Resume' : 'Pause'}
                     </button>
@@ -277,6 +348,7 @@ function App() {
                     <button 
                         className="time-button speed-button slower"
                         onClick={() => handleSpeedChange(Math.max(1, timeSpeed / 2))}
+                        title="Press < to slow down"
                     >
                         <span className="speed-icon">←</span> Slower
                     </button>
@@ -284,10 +356,32 @@ function App() {
                     <button 
                         className="time-button speed-button faster"
                         onClick={() => handleSpeedChange(timeSpeed * 2)}
+                        title="Press > to speed up"
                     >
                         Faster <span className="speed-icon">→</span>
                     </button>
                 </div>
+                
+                <div className="keyboard-shortcuts">
+                    Keyboard: Space = pause, &lt; = slower, &gt; = faster
+                </div>
+                
+                <div className="controls-row" style={{ marginTop: '12px' }}>
+                    <button 
+                        className="time-button date-button"
+                        onClick={toggleDatePicker}
+                    >
+                        Set Specific Date
+                    </button>
+                </div>
+                
+                {isDatePickerOpen && (
+                    <DateSelector 
+                        currentDate={simulationTime}
+                        onSetDate={handleSetDate}
+                        onClose={() => setIsDatePickerOpen(false)}
+                    />
+                )}
             </div>
 
             {/* Debug info */}

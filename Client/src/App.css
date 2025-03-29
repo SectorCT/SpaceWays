@@ -141,7 +141,6 @@ body {
 
 .pause-button {
   flex: 1.5;
-  margin-right: 10px;
   position: relative;
   overflow: hidden;
 }
@@ -209,4 +208,96 @@ body {
 
 .orbit-prompt-button:hover {
     background-color: #444;
+/* Add styles for the date button */
+.date-button {
+  width: 100%;
+  background: linear-gradient(to bottom, rgba(20, 70, 140, 0.8), rgba(10, 50, 100, 0.8));
+  position: relative;
+  overflow: hidden;
+}
+
+.date-button::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+  background-size: 200% 200%;
+  animation: shine 3s infinite;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.date-button:hover {
+  background: linear-gradient(to bottom, rgba(30, 90, 170, 0.9), rgba(20, 70, 140, 0.9));
+}
+
+.date-button:hover::after {
+  opacity: 1;
+}
+
+/* Add styles for date picker positioning near screen edges */
+.time-controls {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  color: white;
+  z-index: 1000;
+  background: rgba(15, 20, 35, 0.85);
+  padding: 15px;
+  border-radius: 12px;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 0 20px rgba(0, 100, 255, 0.25),
+              inset 0 0 10px rgba(0, 100, 255, 0.1);
+  border: 1px solid rgba(0, 150, 255, 0.3);
+  font-family: 'Roboto', sans-serif;
+  transition: all 0.3s ease;
+  min-width: 220px;
+}
+
+/* Handle date picker positioning for different screen edges */
+.date-picker-right-aligned .date-selector {
+  right: 0;
+  left: auto;
+}
+
+.date-picker-top-aligned .date-selector {
+  bottom: 100%;
+  top: auto;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+/* Mobile responsiveness for time controls */
+@media (max-width: 480px) {
+  .time-controls {
+    max-width: calc(100vw - 40px);
+    min-width: auto;
+    padding: 10px;
+  }
+  
+  .controls-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .controls-row > div {
+    display: none; /* Hide spacer */
+  }
+  
+  .time-button {
+    width: 100%;
+  }
+}
+
+.keyboard-shortcuts {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  margin-top: 8px;
+  font-style: italic;
+}
+
 }
