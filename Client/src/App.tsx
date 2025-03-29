@@ -94,6 +94,7 @@ function App() {
     });
     const [zoomLevel, setZoomLevel] = useState<'normal' | 'wide' | 'extreme'>('normal');
     const [showZoomLevelIndicator, setShowZoomLevelIndicator] = useState(false);
+    const [autoRotateSpeed, setAutoRotateSpeed] = useState(0.3);
     
     const [simulationStartTime, _] = useState<Date>(new Date());
     const timeControlsRef = useRef<HTMLDivElement>(null);
@@ -113,6 +114,7 @@ function App() {
                 const deltaMs = (currentTime - lastTime) * timeSpeed;
                 setSimulationTime(prevTime => new Date(prevTime.getTime() + deltaMs));
                 lastTime = currentTime;
+                
             }
         }, 16); // ~60fps
 
@@ -417,36 +419,87 @@ function App() {
             return;
         }
         
-        // ZOOM IN to selected body
-        if (!selectedBody) {
-            console.log("Can't zoom in: no selected body");
-            return;
+        const isZoomedToCurrentSelection = isZoomedIn && 
+            zoomedBodyRef.current && 
+            selectedBody && 
+            zoomedBodyRef.current.name === selectedBody.name;
+        
+        if (isZoomedToCurrentSelection) {
+            // ZOOM OUT
+            console.log("Zooming out from", zoomedBodyRef.current!.name);
+            
+            if (!initialCameraPositionRef.current || !initialTargetRef.current) {
+                console.log("No initial camera position saved");
+                return;
+            }
+            
+            // Set zoom state
+            setIsZoomedIn(false);
+            isZoomingRef.current = true;
+            zoomStartTimeRef.current = performance.now();
+            zoomedBodyRef.current = null;
+            
+            // Fixed zoom out position
+            const zoomOutPosition = new Vector3(0, 0, ZOOM_OUT_DISTANCE);
+            
+            // Update the camera target position
+            initialCameraPositionRef.current = zoomOutPosition;
+            initialTargetRef.current = new Vector3(0, 0, 0);
+            
+            // Create zoom out indicator
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            setZoomIndicatorStyle({
+                left: windowWidth / 2 - 50,
+                top: windowHeight / 2 - 50,
+                width: 100,
+                height: 100
+            });
+            
+            setShowZoomIndicator(true);
+            
+            // Hide indicator after animation completes
+            setTimeout(() => {
+                setShowZoomIndicator(false);
+            }, 1000);
+            
+            setAutoRotateSpeed(0.1); // Reset to normal rotation speed
+        } else {
+            // ZOOM IN
+            if (!selectedBody) {
+                console.log("Can't zoom in: no selected body");
+                return;
+            }
+            
+            console.log("Zooming in to", selectedBody.name);
+            
+            // Store the selected body for tracking during animation
+            zoomedBodyRef.current = selectedBody;
+            isZoomingRef.current = true;
+            zoomStartTimeRef.current = performance.now();
+            setIsZoomedIn(true);
+            
+            // Create zoom visual indicator
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            setZoomIndicatorStyle({
+                left: windowWidth / 2 - 50,
+                top: windowHeight / 2 - 50,
+                width: 100,
+                height: 100
+            });
+            
+            setShowZoomIndicator(true);
+            
+            // Hide indicator after animation completes
+            setTimeout(() => {
+                setShowZoomIndicator(false);
+            }, 1000);
+            
+            setAutoRotateSpeed(0.1); // Slower rotation when zoomed in
         }
-        
-        // Store the selected body for tracking during animation
-        zoomedBodyRef.current = selectedBody;
-        isZoomingRef.current = true;
-        zoomStartTimeRef.current = performance.now();
-        setIsZoomedIn(true);
-        
-        // Create zoom visual indicator
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-        
-        setZoomIndicatorStyle({
-            left: windowWidth / 2 - 50,
-            top: windowHeight / 2 - 50,
-            width: 100,
-            height: 100
-        });
-        
-        setShowZoomIndicator(true);
-        
-        // Hide indicator after animation completes
-        setTimeout(() => {
-            setShowZoomIndicator(false);
-        }, 1000);
-        
     };
 
     useEffect(() => {
