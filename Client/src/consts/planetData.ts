@@ -7,7 +7,7 @@ export const planetData: PlanetData[] = [
     color: "#ffd700",
     mass: 1.989e30,
     scale: 1,
-    texture: "/public/assets/2k_sun.jpg",
+    texture: "/src/assets/2k_sun.jpg",
     dayLength: 24 * 25,
   },
   {
@@ -16,7 +16,7 @@ export const planetData: PlanetData[] = [
     color: "#A0522D",
     mass: 3.285e23,
     scale: 1,
-    texture: "/public/assets/2k_mercury.jpg",
+    texture: "/src/assets/2k_mercury.jpg",
     dayLength: 24 * 176,
   },
   {
@@ -25,7 +25,7 @@ export const planetData: PlanetData[] = [
     color: "#DEB887",
     mass: 4.867e24,
     scale: 1,
-    texture: "/public/assets/2k_venus.jpg",
+    texture: "/src/assets/2k_venus.jpg",
     dayLength: 24 * 243,
   },
   {
@@ -54,7 +54,7 @@ export const planetData: PlanetData[] = [
     color: "#ff0000",
     mass: 6.417e23,
     scale: 1,
-    texture: "/public/assets/2k_mars.jpg",
+    texture: "/src/assets/2k_mars.jpg",
     dayLength: 24 * 24.6,
   },
   {
@@ -63,7 +63,7 @@ export const planetData: PlanetData[] = [
     color: "#DEB887",
     mass: 1.898e27,
     scale: 1,
-    texture: "/public/assets/2k_jupiter.jpg",
+    texture: "/src/assets/2k_jupiter.jpg",
     dayLength: 9.9,
   },
   {
@@ -72,7 +72,7 @@ export const planetData: PlanetData[] = [
     color: "#DEB887",
     mass: 5.683e26,
     scale: 1,
-    texture: "/public/assets/2k_saturn.jpg",
+    texture: "/src/assets/2k_saturn.jpg",
     dayLength: 10.7,
   },
   {
@@ -81,7 +81,7 @@ export const planetData: PlanetData[] = [
     color: "#87CEEB",
     mass: 8.681e25,
     scale: 1,
-    texture: "/public/assets/2k_uranus.jpg",
+    texture: "/src/assets/2k_uranus.jpg",
     dayLength: 17,
   },
   {
@@ -90,7 +90,7 @@ export const planetData: PlanetData[] = [
     color: "#1E90FF",
     mass: 1.024e26,
     scale: 1,
-    texture: "/public/assets/2k_neptune.jpg",
+    texture: "/src/assets/2k_neptune.jpg",
     dayLength: 16.1,
   },
   {
@@ -99,7 +99,7 @@ export const planetData: PlanetData[] = [
     color: "#808080",
     mass: 1.309e22,
     scale: 1,
-    texture: "/public/assets/2k_pluto.jpg",
+    texture: "/src/assets/2k_pluto.jpg",
     dayLength: 153,
   },
 ];
