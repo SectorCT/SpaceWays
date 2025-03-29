@@ -9,4 +9,5 @@ export interface CelestialBody {
     mass: number;          // kg
     scale: number;          // Scaling factor for rendering
     dayLength: number;      // in minutes
+    rotationMultiplier?: number; // Optional, enhances rotation for visual effect
 }

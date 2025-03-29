@@ -6,4 +6,5 @@ export interface PlanetData {
   scale: number;
   texture: string;
   dayLength: number;
+  rotationMultiplier?: number; // Optional multiplier to adjust rotation speed visually
 }

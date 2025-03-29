@@ -8,7 +8,7 @@ export const planetData: PlanetData[] = [
     mass: 1.989e30,
     scale: 1,
     texture: "2k_sun.jpg",
-    dayLength: 24 * 25,
+    dayLength: 609.6  // Sun rotates once every ~25.4 days (in hours)
   },
   {
     name: "Mercury",
@@ -17,7 +17,7 @@ export const planetData: PlanetData[] = [
     mass: 3.285e23,
     scale: 1,
     texture: "2k_mercury.jpg",
-    dayLength: 24 * 176,
+    dayLength: 4222.6  // Mercury's sidereal day is ~58.6 Earth days (in hours)
   },
   {
     name: "Venus",
@@ -26,7 +26,7 @@ export const planetData: PlanetData[] = [
     mass: 4.867e24,
     scale: 1,
     texture: "2k_venus_surface.jpg",
-    dayLength: 24 * 243,
+    dayLength: 5832.5  // Venus rotates once every 243 Earth days (in hours)
   },
   {
     name: "Earth",
@@ -36,7 +36,7 @@ export const planetData: PlanetData[] = [
     scale: 1,
     texture:
       "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg",
-    dayLength: 24,
+    dayLength: 24.0  // Earth's sidereal day is ~23.93 hours
   },
   {
     name: "Moon",
@@ -46,7 +46,7 @@ export const planetData: PlanetData[] = [
     scale: 1,
     texture:
       "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg",
-    dayLength: 24 * 29.5,
+    dayLength: 708.7  // Moon's sidereal rotation period is ~27.3 Earth days (in hours)
   },
   {
     name: "Mars",
@@ -55,7 +55,7 @@ export const planetData: PlanetData[] = [
     mass: 6.417e23,
     scale: 1,
     texture: "2k_mars.jpg",
-    dayLength: 24 * 24.6,
+    dayLength: 24.7  // Mars' day is 24 hours 37 minutes
   },
   {
     name: "Jupiter",
@@ -64,7 +64,7 @@ export const planetData: PlanetData[] = [
     mass: 1.898e27,
     scale: 1,
     texture: "2k_jupiter.jpg",
-    dayLength: 9.9,
+    dayLength: 9.9  // Jupiter's day is 9h 55m
   },
   {
     name: "Saturn",
@@ -73,7 +73,7 @@ export const planetData: PlanetData[] = [
     mass: 5.683e26,
     scale: 1,
     texture: "2k_saturn.jpg",
-    dayLength: 10.7,
+    dayLength: 10.7  // Saturn's day is 10h 42m
   },
   {
     name: "Uranus",
@@ -82,7 +82,7 @@ export const planetData: PlanetData[] = [
     mass: 8.681e25,
     scale: 1,
     texture: "2k_uranus.jpg",
-    dayLength: 17,
+    dayLength: 17.2  // Uranus' day is 17h 14m
   },
   {
     name: "Neptune",
@@ -91,7 +91,7 @@ export const planetData: PlanetData[] = [
     mass: 1.024e26,
     scale: 1,
     texture: "2k_neptune.jpg",
-    dayLength: 16.1,
+    dayLength: 16.1  // Neptune's day is 16h 6m
   },
   {
     name: "Pluto",
@@ -100,6 +100,6 @@ export const planetData: PlanetData[] = [
     mass: 1.309e22,
     scale: 1,
     texture: "2k_pluto.jpg",
-    dayLength: 153,
+    dayLength: 153.3  // Pluto's day is 6.4 Earth days (in hours)
   },
 ];

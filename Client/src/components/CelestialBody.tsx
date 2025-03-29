@@ -1,10 +1,11 @@
 import { useRef, useEffect, useState } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useLoader } from '@react-three/fiber'
 import { Sphere } from '@react-three/drei'
 import { CelestialBody } from '../types/CelestialBody'
 import { getPositionFromOrbit2 } from '../getPositionFromOrbit'
 import * as THREE from 'three'
 import { SelectionIndicator } from './SelectionIndicator'
+import { TextureLoader } from 'three'
 
 interface CelestialBodyProps {
     body: CelestialBody;
@@ -29,6 +30,9 @@ export function CelestialBodyComponent({
     const [isLoading, setIsLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
     const lastTimeRef = useRef<Date>(currentTime)
+    const materialRef = useRef<THREE.MeshStandardMaterial>(null)
+    const [hovered, setHovered] = useState(false)
+    const [rotationAngle, setRotationAngle] = useState(0)
 
     // Load texture if provided
     useEffect(() => {
@@ -91,10 +95,37 @@ export function CelestialBodyComponent({
             
             // Calculate rotation based on time difference
             const timeDiff = (currentTime.getTime() - lastTimeRef.current.getTime()) / 1000 // Convert to seconds
-            const rotationSpeed = (2 * Math.PI) / (body.dayLength * 60 * 60)
-            meshRef.current.rotation.y += rotationSpeed * timeDiff
+            
+            // Calculate rotation speed in radians per second
+            // A full rotation (2π radians) should take exactly one day length
+            // dayLength is in hours, so convert to seconds (3600 seconds per hour)
+            const rotationSpeed = (2 * Math.PI) / (body.dayLength * 3600)
+            
+            // Apply rotation with a time multiplier for better visibility
+            // This helps see rotation in slow-rotating planets but preserves relative speeds
+            const timeMultiplier = 100 // Makes rotation 100x faster but keeps relative speeds intact
+            meshRef.current.rotation.y += rotationSpeed * timeDiff * timeMultiplier
+            
+            // Keep rotation angle between 0 and 2*PI
+            if (meshRef.current.rotation.y > Math.PI * 2) {
+                meshRef.current.rotation.y -= Math.PI * 2
+            }
             
             lastTimeRef.current = currentTime
+        }
+
+        // Update material for hover/selection states
+        if (materialRef.current) {
+            if (isSelected) {
+                materialRef.current.emissive.set(0x333333);
+                materialRef.current.emissiveIntensity = 0.5;
+            } else if (hovered) {
+                materialRef.current.emissive.set(0x222222);
+                materialRef.current.emissiveIntensity = 0.3;
+            } else {
+                materialRef.current.emissive.set(0x000000);
+                materialRef.current.emissiveIntensity = 0;
+            }
         }
     })
 
@@ -121,7 +152,8 @@ export function CelestialBodyComponent({
                 args={[body.radius * body.scale, 32, 32]}
                 position={initialPosition.toArray()}
                 onClick={handleClick}
-                
+                onPointerOver={() => setHovered(true)}
+                onPointerOut={() => setHovered(false)}
             >
                 <primitive object={material} />
             </Sphere>
