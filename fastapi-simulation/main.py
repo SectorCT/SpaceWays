@@ -39,7 +39,7 @@ async def simulate_n_bodies(bodies_data: List[NBodyInput]):
             bodies.append(new_body)
 
         dt = 60
-        steps = 262974
+        steps = 525948
 
         trajectories = nbody_simulation_verlet(bodies, dt, steps)
 

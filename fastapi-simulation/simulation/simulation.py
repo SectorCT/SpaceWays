@@ -37,7 +37,7 @@ def compute_accelerations(bodies):
 
     return accelerations
 
-def nbody_simulation_verlet(bodies, dt, steps, snapshot_interval=20000):
+def nbody_simulation_verlet(bodies, dt, steps, snapshot_interval=52):
     """
     Runs an N-body simulation using Velocity Verlet integration.
 
