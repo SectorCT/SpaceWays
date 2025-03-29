@@ -55,6 +55,15 @@ const moon: CelestialBody = {
   texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg"
 }
 
+const spaceship: CelestialBody = {
+  name: "Spaceship",
+  orbit: exampleOrbit,
+  radius: 70, // Increased from 10 to 100 for a much bigger clickable area
+  color: "#00ffff",
+  mass: 1000,
+  scale: 0.1,
+}
+
 const earth: CelestialBody = {
   name: "Earth",
   orbit: {
@@ -294,9 +303,9 @@ function App() {
 
                     {/* Spaceship */}
                     <Spaceship
-                        body={moon}
+                        body={spaceship}
                         currentTime={simulationTime}
-                        isSelected={selectedBody?.name === moon.name}
+                        isSelected={selectedBody?.name === spaceship.name}
                         onSelect={handleSelectBody}
                     />
                     

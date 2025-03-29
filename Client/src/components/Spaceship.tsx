@@ -7,6 +7,7 @@ import { SelectionIndicator } from "./SelectionIndicator";
 import { useLoader } from "@react-three/fiber";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Suspense } from "react";
+import { Sphere } from "@react-three/drei";
 
 // Rotation offset in radians (x, y, z)
 const ROTATION_OFFSET = new THREE.Vector3(0, 0, -1.2);
@@ -93,6 +94,17 @@ export function Spaceship({
         onPointerOver={() => (document.body.style.cursor = "pointer")}
         onPointerOut={() => (document.body.style.cursor = "auto")}
       >
+        {/* Invisible clickable sphere */}
+        <Sphere
+          args={[body.radius * body.scale, 32, 32]}
+          onClick={handleClick}
+          onPointerOver={() => document.body.style.cursor = 'pointer'}
+          onPointerOut={() => document.body.style.cursor = 'auto'}
+        >
+          <meshBasicMaterial transparent opacity={0} />
+        </Sphere>
+
+        {/* Visual spaceship model */}
         <primitive object={scene} scale={1.5} />
         <pointLight
           position={[0, 0, 0]}
