@@ -9,45 +9,27 @@ export function getPositionFromOrbit2(orbit: OrbitData2, simulationTime: number,
     const timestamps = Object.keys(orbit).map(Number);
     const sortedTimestamps = timestamps.sort((a, b) => a - b);
 
-    // Convert to seconds without flooring
-    const currentTime = (simulationTime/1000/60 - simulationStartTime/1000/60);
-    
-    // Find the two timestamps we're between
-    let left = 0;
-    while (left < sortedTimestamps.length - 1 && sortedTimestamps[left + 1] <= currentTime) {
-        left++;
-    }
-    
-    // If we're at the end of the array, wrap around to the beginning
-    const right = (left + 1) % sortedTimestamps.length;
-    
-    // Get the positions at these timestamps
-    const leftTimestamp = sortedTimestamps[left];
-    const rightTimestamp = sortedTimestamps[right];
-    
-    // Calculate interpolation factor
-    let t = (currentTime - leftTimestamp) / (rightTimestamp - leftTimestamp);
-    
-    // Handle wrap-around case
-    if (right === 0) {
-        const period = sortedTimestamps[sortedTimestamps.length - 1] - sortedTimestamps[0];
-        t = (currentTime - leftTimestamp) / period;
-    }
-    
-    // Clamp t between 0 and 1 to prevent extrapolation
-    t = Math.max(0, Math.min(1, t));
+    const currentTime = (Math.floor(simulationTime/1000) - Math.floor(simulationStartTime/1000));
+    const closestTimeStampIndex = getClosestTimestamp(sortedTimestamps, currentTime);
+    const closestTimeStamp = sortedTimestamps[closestTimeStampIndex];
 
-    const position = orbit[leftTimestamp.toFixed(1)];
-    const nextPosition = orbit[rightTimestamp.toFixed(1)];
+    const remainingTime = currentTime - closestTimeStamp;
+
+    const nextTimeStamp = sortedTimestamps[closestTimeStampIndex + 1];
+    const timeToNextTimeStamp = nextTimeStamp - closestTimeStamp;
+
+    const t = remainingTime / timeToNextTimeStamp;
+
+    const position = orbit[closestTimeStamp.toFixed(1)]
+    const nextPosition = orbit[nextTimeStamp.toFixed(1)]
 
     const interpolatedPosition = new Vector3(
         position[0] + (nextPosition[0] - position[0]) * t,
         position[1] + (nextPosition[1] - position[1]) * t,
         position[2] + (nextPosition[2] - position[2]) * t
-    );
-    
+    )
     return interpolatedPosition;
-}
+} 
 
 //return the index of the closest timestamp to the current time
 function getClosestTimestamp(timestamps: number[], currentTime: number): number {

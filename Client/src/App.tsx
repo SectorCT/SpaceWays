@@ -1,9 +1,8 @@
 import { Canvas } from "@react-three/fiber";
 import { Stars, OrbitControls } from "@react-three/drei";
 import { CelestialBodyComponent } from "./components/CelestialBody";
-import { OrbitLine } from "./components/OrbitLine";
+import { OrbitLine2 } from "./components/OrbitLine";
 import { CelestialBody } from "./types/CelestialBody";
-import { Orbit } from "./types/orbit";
 import { useState, useEffect, useRef } from "react";
 import { InfoPanel } from "./components/InfoPanel";
 import { PromptMenu } from "./components/PromptMenu";
@@ -11,8 +10,10 @@ import { ManeuverNode } from "./components/ManeuverNode";
 import { Vector3 } from "three";
 import { DateSelector } from "./components/DateSelector";
 import { ZoomButton } from "./components/ZoomButton";
-import { getOrbitalPosition } from "./getPositionFromOrbit";
+import { getPositionFromOrbit2 } from "./getPositionFromOrbit";
 import "./App.css";
+import { orbitData } from "./orbitData";
+import * as THREE from 'three';
 
 interface PromptButton {
     label: string;
@@ -31,62 +32,48 @@ interface ManeuverNodeData {
     deltaV: Vector3;
 }
 
-const exampleOrbit: Orbit = {
-  name: "Example Orbit",
-  semi_major_axis: 100, // Scaled down for visualization
-  eccentricity: 0.2,
-  inclination: 30,
-  raan: 0,
-  arg_periapsis: 0,
-  true_anomaly: 0,
-  apoapsis: 120,
-  periapsis: 80,
-  orbital_period: 86400,
-  mean_motion: 0.0000729,
-  epoch: new Date().toISOString(),
-};
+const exampleOrbit2 = orbitData;
 
 const moon: CelestialBody = {
-  name: "Moon",
-  orbit: exampleOrbit,
-  radius: 1737,
-  color: "#808080",
-  mass: 7.348e22,
-  scale: 0.005,
-  texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg"
+    name: "Moon",
+    orbit: exampleOrbit2["Moon"],
+    radius: 1737,
+    color: "#808080",
+    mass: 7.348e22,
+    scale: 1737,
+    texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg",
+    dayLength: 24,
 }
 
 const earth: CelestialBody = {
-  name: "Earth",
-  orbit: {
-    name: "Earth Orbit",
-    semi_major_axis: 0, // At center
-    eccentricity: 0,
-    inclination: 0,
-    raan: 0,
-    arg_periapsis: 0,
-    true_anomaly: 0,
-    apoapsis: 0,
-    periapsis: 0,
-    orbital_period: 86400, // 24 hours in seconds
-    mean_motion: 0.0000729, // 2π/86400
-    epoch: new Date().toISOString(),
-  },
-  radius: 6371, // Earth's radius in km
-  color: "#4287f5", // Fallback color if texture fails to load
-  mass: 5.972e24, // Earth's mass in kg
-  scale: 0.01, // Increased scale for better visibility
-  texture:
-    "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg", // Earth texture from Three.js repository
+    name: "Earth",
+    orbit: exampleOrbit2["Earth"],
+    radius: 6371,
+    color: "#4287f5",
+    mass: 5.972e24,
+    scale: 1,
+    texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg",
+    dayLength: 24,
 };
 
-const ZOOM_OUT_DISTANCE = 500; // Fixed zoom out distance
+const sun: CelestialBody = {
+    name: "Sun",
+    orbit: exampleOrbit2["Sun"],
+    radius: 696340,
+    color: "#ff0000",
+    mass: 1.989e30,
+    scale: 1,
+    texture: "/src/assets/2k_sun.jpg",
+    dayLength: 24,
+}
+
+const ZOOM_OUT_DISTANCE = 10000; // Fixed zoom out distance
 
 function App() {
     const [simulationTime, setSimulationTime] = useState<Date>(new Date());
     const [timeSpeed, setTimeSpeed] = useState(1); // 1 = real time, 2 = 2x speed, etc.
     const [isPaused, setIsPaused] = useState(false);
-    const [selectedBody, setSelectedBody] = useState<CelestialBody | null>(null);
+    const [selectedBody, setSelectedBody] = useState<CelestialBody | null>(earth);
     const [selectedManeuver, setSelectedManeuver] = useState<string | null>(null);
     const [prompt, setPrompt] = useState<PromptState>({
         isOpen: false,
@@ -98,7 +85,7 @@ function App() {
     const [isDraggingHandle, setIsDraggingHandle] = useState(false);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [showZoomIndicator, setShowZoomIndicator] = useState(false);
-    const [isZoomedIn, setIsZoomedIn] = useState(false);
+    const [isZoomedIn, setIsZoomedIn] = useState<boolean>(true);
     const [zoomIndicatorStyle, setZoomIndicatorStyle] = useState({
         left: 0,
         top: 0,
@@ -108,14 +95,15 @@ function App() {
     const [zoomLevel, setZoomLevel] = useState<'normal' | 'wide' | 'extreme'>('normal');
     const [showZoomLevelIndicator, setShowZoomLevelIndicator] = useState(false);
     
+    const [simulationStartTime, _] = useState<Date>(new Date());
     const timeControlsRef = useRef<HTMLDivElement>(null);
     const orbitControlsRef = useRef<any>(null);
     const initialCameraPositionRef = useRef<Vector3 | null>(null);
     const initialTargetRef = useRef<Vector3 | null>(null);
     const zoomTargetRef = useRef<Vector3 | null>(null);
-    const isZoomingRef = useRef(false);
-    const zoomStartTimeRef = useRef<number>(0);
-    const zoomedBodyRef = useRef<CelestialBody | null>(null);
+    const isZoomingRef = useRef(true);
+    const zoomStartTimeRef = useRef<number>(performance.now());
+    const zoomedBodyRef = useRef<CelestialBody | null>(sun);
 
     useEffect(() => {
         let lastTime = Date.now();
@@ -205,58 +193,18 @@ function App() {
             isZoomingRef.current = true;
             zoomStartTimeRef.current = performance.now();
             setIsZoomedIn(true);
-
-            // Create zoom in indicator
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-            
-            setZoomIndicatorStyle({
-                left: windowWidth / 2 - 50,
-                top: windowHeight / 2 - 50,
-                width: 100,
-                height: 100
-            });
-            
-            setShowZoomIndicator(true);
-
-            // After 1 second, zoom back out
-            setTimeout(() => {
-                // Start zoom out
-                setIsZoomedIn(false);
-                isZoomingRef.current = true;
-                zoomStartTimeRef.current = performance.now();
-                
-                // Store current camera direction before zoom out
-                if (orbitControlsRef.current) {
-                    const currentPos = orbitControlsRef.current.object.position.clone();
-                    const direction = currentPos.clone().sub(orbitControlsRef.current.target).normalize();
-                    const zoomOutPosition = direction.multiplyScalar(ZOOM_OUT_DISTANCE);
-                    initialCameraPositionRef.current = zoomOutPosition;
-                    initialTargetRef.current = new Vector3(0, 0, 0);
-                }
-                
-                zoomedBodyRef.current = null;
-                
-                // Update zoom indicator for zoom out
-                setShowZoomIndicator(true);
-                
-                // Hide indicator after zoom out animation completes
-                setTimeout(() => {
-                    setShowZoomIndicator(false);
-                }, 1000);
-            }, 1000);
-        } else {
-            // Normal selection behavior
-            setSelectedBody(body);
         }
+
+        // Set the selected body
+        setSelectedBody(body);
     };
 
+    // Simple close handler - now returns to null selection
     const handleCloseInfoPanel = () => {
         setSelectedBody(null);
     };
 
     const handleOrbitClick = (event: MouseEvent, buttons: PromptButton[]) => {
-        console.log("Orbit clicked");
         event.preventDefault();
         
         // Get the hover point from the button's onClick return value
@@ -302,7 +250,6 @@ function App() {
     };
 
     const handleManeuverSelect = (id: string) => {
-        console.log("Selecting maneuver:", id);
         setSelectedManeuver(prev => {
             const newSelection = prev === id ? null : id;
             console.log("New selection:", newSelection);
@@ -369,7 +316,7 @@ function App() {
             
             if (isZoomedIn && zoomedBodyRef.current) {
                 // Get the current position of the tracked body
-                const currentBodyPosition = getOrbitalPosition(zoomedBodyRef.current, simulationTime);
+                const currentBodyPosition = getPositionFromOrbit2(zoomedBodyRef.current.orbit, simulationTime.getTime(), simulationStartTime.getTime());
                 const updatedTargetPosition = new Vector3(
                     currentBodyPosition.x, 
                     currentBodyPosition.y, 
@@ -470,112 +417,72 @@ function App() {
             return;
         }
         
-        // Check if we're already zoomed in to the selected body
-        const isZoomedToCurrentSelection = isZoomedIn && 
-            zoomedBodyRef.current && 
-            selectedBody && 
-            zoomedBodyRef.current.name === selectedBody.name;
-        
-        if (isZoomedToCurrentSelection) {
-            // ZOOM OUT to fixed distance
-            console.log("Zooming out from", zoomedBodyRef.current!.name);
-            
-            if (!initialCameraPositionRef.current || !initialTargetRef.current) {
-                console.log("No initial camera position saved");
-                return;
-            }
-            
-            // Set zoom state
-            setIsZoomedIn(false);
-            isZoomingRef.current = true;
-            zoomStartTimeRef.current = performance.now();
-            zoomedBodyRef.current = null;
-            
-            // Fixed zoom out position
-            const zoomOutPosition = new Vector3(0, 0, ZOOM_OUT_DISTANCE);
-            
-            // Update the camera target position
-            initialCameraPositionRef.current = zoomOutPosition;
-            initialTargetRef.current = new Vector3(0, 0, 0);
-            
-            // Create zoom out indicator
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-            
-            setZoomIndicatorStyle({
-                left: windowWidth / 2 - 50,
-                top: windowHeight / 2 - 50,
-                width: 100,
-                height: 100
-            });
-            
-            setShowZoomIndicator(true);
-            
-            // Hide indicator after animation completes
-            setTimeout(() => {
-                setShowZoomIndicator(false);
-            }, 1000);
-            
-        } else {
-            // ZOOM IN to selected body
-            if (!selectedBody) {
-                console.log("Can't zoom in: no selected body");
-                return;
-            }
-            
-            console.log("Zooming in to", selectedBody.name);
-            
-            // Store the selected body for tracking during animation
-            zoomedBodyRef.current = selectedBody;
-            isZoomingRef.current = true;
-            zoomStartTimeRef.current = performance.now();
-            setIsZoomedIn(true);
-            
-            // Create zoom visual indicator
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-            
-            setZoomIndicatorStyle({
-                left: windowWidth / 2 - 50,
-                top: windowHeight / 2 - 50,
-                width: 100,
-                height: 100
-            });
-            
-            setShowZoomIndicator(true);
-            
-            // Hide indicator after animation completes
-            setTimeout(() => {
-                setShowZoomIndicator(false);
-            }, 1000);
+        // ZOOM IN to selected body
+        if (!selectedBody) {
+            console.log("Can't zoom in: no selected body");
+            return;
         }
+        
+        // Store the selected body for tracking during animation
+        zoomedBodyRef.current = selectedBody;
+        isZoomingRef.current = true;
+        zoomStartTimeRef.current = performance.now();
+        setIsZoomedIn(true);
+        
+        // Create zoom visual indicator
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        
+        setZoomIndicatorStyle({
+            left: windowWidth / 2 - 50,
+            top: windowHeight / 2 - 50,
+            width: 100,
+            height: 100
+        });
+        
+        setShowZoomIndicator(true);
+        
+        // Hide indicator after animation completes
+        setTimeout(() => {
+            setShowZoomIndicator(false);
+        }, 1000);
+        
     };
+
+    useEffect(() => {
+      THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0,0,1);
+    }, []);
 
     return (
         <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
             {/* Single Canvas for all 3D content */}
             <div style={{ width: '100%', height: '100%' }}>
                 <Canvas 
-                    camera={{ position: [0, 0, 250], fov: 45 }}
+                    camera={{ 
+                        position: [0, 0, sun.radius * sun.scale * 10], 
+                        fov: 45,
+                        near: 1,
+                        far: 100000000000,
+                        frustumCulled: false
+                    }}
+                    
                     onPointerMissed={() => {
-                        if (selectedBody) {
-                            setSelectedBody(null);
-                        }
+                        setSelectedBody(null);
                         if (selectedManeuver) {
                             setSelectedManeuver(null);
                         }
                     }}
                 >
                     {/* Background stars - positioned far behind everything */}
-                    <Stars 
-                        radius={300} 
+                    {/* <Stars 
+                        radius={6000000} 
                         depth={50} 
-                        count={5000} 
-                        factor={4} 
-                        saturation={0} 
+                        count={500000} 
+                        factor={6} 
+                        saturation={1} 
                         fade 
                         speed={1}
-                    />
+                    /> */}
                     
                     {/* Celestial bodies */}
                     <CelestialBodyComponent 
@@ -583,18 +490,43 @@ function App() {
                         currentTime={simulationTime} 
                         isSelected={selectedBody?.name === earth.name}
                         onSelect={handleSelectBody}
+                        simulationStartTime={simulationStartTime}
                     />
                     <CelestialBodyComponent 
                         body={moon} 
                         currentTime={simulationTime} 
                         isSelected={selectedBody?.name === moon.name}
                         onSelect={handleSelectBody}
+                        simulationStartTime={simulationStartTime}
                     />
-                    
-                    {/* Orbit lines */}
-                    <OrbitLine 
-                        orbit={exampleOrbit} 
-                        color="#00ff00" 
+
+                    <CelestialBodyComponent
+                        body={sun} 
+                        currentTime={simulationTime} 
+                        isSelected={selectedBody?.name === sun.name}
+                        onSelect={handleSelectBody}
+                        simulationStartTime={simulationStartTime}
+                    />
+
+                    <OrbitLine2 
+                        orbit={earth.orbit}
+                        color={earth.color}
+                        onOrbitClick={handleOrbitClick}
+                        maneuverNodes={maneuverNodes}
+                        selectedManeuver={selectedManeuver}
+                    />
+
+                    <OrbitLine2 
+                        orbit={moon.orbit}
+                        color={moon.color} 
+                        onOrbitClick={handleOrbitClick}
+                        maneuverNodes={maneuverNodes}
+                        selectedManeuver={selectedManeuver}
+                    />
+
+                    <OrbitLine2 
+                        orbit={exampleOrbit2["Sun"]}
+                        color="#ff0000"
                         onOrbitClick={handleOrbitClick}
                         maneuverNodes={maneuverNodes}
                         selectedManeuver={selectedManeuver}
@@ -617,19 +549,18 @@ function App() {
                     
                     {/* Controls */}
                     <OrbitControls       
-                        enablePan={true}
-                        enableZoom={true}
-                        enableRotate={true}
-                        enabled={true}
+                        enablePan={!isDraggingHandle}
+                        enableZoom={!isDraggingHandle}
+                        enableRotate={!isDraggingHandle}
+                        enabled={!isDraggingHandle}
                         ref={orbitControlsRef}
                         makeDefault
                         minDistance={1}
-                        maxDistance={2000}
+                        maxDistance={sun.radius * sun.scale * 4}
                         zoomSpeed={1.0}
-                        rotateSpeed={0.8}
+                        rotateSpeed={1}
                         panSpeed={0.8}
                         dampingFactor={0.1}
-                        autoRotate={true}
                     />
                 </Canvas>
             </div>
