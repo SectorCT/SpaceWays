@@ -105,7 +105,7 @@ export function ManeuverNode({
       groupRef.current.scale.setScalar(lerped);
     }
   });
-  
+
   const handlePullerDragStart = (
     event: ThreeEvent<PointerEvent>,
     direction: Direction,
