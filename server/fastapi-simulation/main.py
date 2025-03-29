@@ -282,6 +282,7 @@ async def get_all_trajectories_endpoint(
     try:
         # Get all bodies from database
         bodies = await get_all_bodies()
+        print(f"Retrieved {len(bodies)} bodies from database")
         
         # Create a dictionary to store all trajectories
         all_trajectories = {}
@@ -289,6 +290,13 @@ async def get_all_trajectories_endpoint(
         # Get trajectory data for each body
         for body in bodies:
             trajectory = body.get_trajectory()
+            print(f"Body {body.name} has {len(trajectory)} trajectory points")
+            print(f"Trajectory time range: {min(float(t) for t in trajectory.keys() if trajectory)} to {max(float(t) for t in trajectory.keys() if trajectory)} seconds")
+            
+            # Convert start and end dates to seconds
+            start_seconds = date_to_seconds(start_date)
+            end_seconds = date_to_seconds(end_date)
+            print(f"Filtering between {start_seconds} to {end_seconds} seconds")
             
             # Filter trajectory between dates
             filtered_trajectory = get_trajectory_between_dates(
@@ -296,6 +304,7 @@ async def get_all_trajectories_endpoint(
                 start_date,
                 end_date
             )
+            print(f"After filtering: {len(filtered_trajectory)} points")
             
             # Add to the result dictionary
             all_trajectories[body.name] = filtered_trajectory

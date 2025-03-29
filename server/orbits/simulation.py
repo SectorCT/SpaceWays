@@ -154,7 +154,10 @@ def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=STEPS_PER_QUARTER, snaps
         if body.trajectory_json:
             trajectories[body.name] = json.loads(body.trajectory_json)
         else:
-            trajectories[body.name] = {f"{current_time}": body.position.tolist()}
+            trajectories[body.name] = {}
+        # Add current position if not already in trajectory
+        if f"{current_time}" not in trajectories[body.name]:
+            trajectories[body.name][f"{current_time}"] = body.position.tolist()
     print(f"Initial trajectories: {trajectories}")
 
     # If start_time is provided, get the state at that time for each body
@@ -187,11 +190,15 @@ def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=STEPS_PER_QUARTER, snaps
     if save_final:
         print("Saving final trajectories to database")
         for body in bodies:
-            print(f"Saving trajectory for {body.name}: {trajectories[body.name]}")
-            body.set_trajectory(trajectories[body.name])
+            # Get existing trajectory from database
+            existing_trajectory = body.get_trajectory()
+            # Merge with new trajectory data
+            existing_trajectory.update(trajectories[body.name])
+            print(f"Saving merged trajectory for {body.name} with {len(existing_trajectory)} total points")
+            body.set_trajectory(existing_trajectory)
             body.save()
 
-    return trajectories 
+    return trajectories
 
 def simulate_quarters(bodies, start_time=0.0):
     """
