@@ -6,13 +6,14 @@ G = 6.67430e-20
 class Body:
     """
     Represents a celestial body with name, mass, 3D position, and 3D velocity.
-    Also stores its trajectory over time in a list of 3-element arrays.
+    Also stores its trajectory over time in a list of 3-element arrays (optional).
     """
     def __init__(self, name: str, mass: float, position, velocity):
         self.name = name
         self.mass = mass
         self.position = np.array(position, dtype=float)  # in km
         self.velocity = np.array(velocity, dtype=float)  # in km/s
+        # In-memory trajectory if you need it
         self.trajectory = [self.position.copy()]
 
     def __repr__(self):
@@ -36,21 +37,43 @@ def compute_accelerations(bodies):
 
     return accelerations
 
-def nbody_simulation_verlet(bodies, dt, steps):
+def nbody_simulation_verlet(bodies, dt, steps, snapshot_interval=20000):
     """
-    Run an N-body simulation using Velocity Verlet integration,
-    returning a dict: { body_name: { "t0": [x,y,z], "t1": [x,y,z], ... }, ... }.
+    Runs an N-body simulation using Velocity Verlet integration.
+
+    PARAMETERS:
+      - bodies (list[Body]): The celestial bodies
+      - dt (float): Timestep in seconds
+      - steps (int): Number of integration steps
+      - snapshot_interval (int): Only store the trajectory
+        in the output dictionary once every 'snapshot_interval' steps.
+        Also stores the final step for completeness.
+
+    RETURN:
+      A dictionary of the form:
+        {
+          "Earth": {
+             "0.0": [x0, y0, z0],
+             "1200000.0": [x1, y1, z1],
+             ...
+          },
+          "Moon": {
+             ...
+          }
+        }
+      where each time is stored as a string key, and value is [x, y, z].
     """
+
     current_time = 0.0
 
     trajectories = {
-        body.name: {f"{current_time}": body.position.copy().tolist()}
+        body.name: {f"{current_time}": body.position.tolist()}
         for body in bodies
     }
 
     accelerations = compute_accelerations(bodies)
 
-    for _ in range(steps):
+    for step in range(1, steps + 1):
         for i, body in enumerate(bodies):
             body.position += body.velocity * dt + 0.5 * accelerations[i] * dt**2
 
@@ -61,8 +84,9 @@ def nbody_simulation_verlet(bodies, dt, steps):
 
         current_time += dt
 
-        for body in bodies:
-            trajectories[body.name][f"{current_time}"] = body.position.tolist()
+        if (step % snapshot_interval == 0) or (step == steps):
+            for body in bodies:
+                trajectories[body.name][f"{current_time}"] = body.position.tolist()
 
         accelerations = new_accelerations
 
