@@ -56,7 +56,7 @@ export function ManeuverNode({
   const baseHandleLength = 1.5;
   const baseSphereRadius = 0.4;
   const baseHandleThickness = 0.1;
-  const deltaVSensitivity = 0.1;
+  const deltaVSensitivity = 0.01;
 
   const [handlePositions, setHandlePositions] = useState<Record<Direction, Vector3>>({
     prograde: new Vector3(0, 0, baseHandleLength),
