@@ -316,10 +316,10 @@ function App() {
                     
                     {/* Controls */}
                     <OrbitControls 
-                        enablePan={!isDraggingHandle && !selectedManeuver}
-                        enableZoom={!isDraggingHandle && !selectedManeuver}
-                        enableRotate={!isDraggingHandle && !selectedManeuver}
-                        enabled={!isDraggingHandle && !selectedManeuver}
+                        enablePan={!isDraggingHandle}
+                        enableZoom={!isDraggingHandle}
+                        enableRotate={!isDraggingHandle}
+                        enabled={!isDraggingHandle}
                     />
                 </Canvas>
             </div>
