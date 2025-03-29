@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Line, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
 import { ThreeEvent, useThree, useFrame } from '@react-three/fiber';
@@ -113,10 +113,6 @@ export function OrbitLine2({
         setPoints(reducePoints(allPoints, MAX_POINTS));
     }, [orbit]);
 
-    // Create a curve from the points for the tube geometry
-    const curve = useMemo(() => {
-        return new THREE.CatmullRomCurve3(points);
-    }, [points]);
 
     const handleTubeHover = (event: ThreeEvent<PointerEvent>) => {
         event.stopPropagation();
