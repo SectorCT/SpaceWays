@@ -4,14 +4,13 @@ import { Vector3, Group } from "three";
 import { useFrame, useThree, ThreeEvent } from "@react-three/fiber";
 
 const directionVectors: Record<Direction, Vector3> = {
-    prograde: new Vector3(0, 0, 1),
-    retrograde: new Vector3(0, 0, -1),
-    normal: new Vector3(0, 1, 0),
-    antinormal: new Vector3(0, -1, 0),
-    radialIn: new Vector3(-1, 0, 0),
-    radialOut: new Vector3(1, 0, 0),
-  };
-  
+  prograde: new Vector3(0, 0, 1),
+  retrograde: new Vector3(0, 0, -1),
+  normal: new Vector3(0, 1, 0),
+  antinormal: new Vector3(0, -1, 0),
+  radialIn: new Vector3(-1, 0, 0),
+  radialOut: new Vector3(1, 0, 0),
+};
 
 interface ManeuverNodeProps {
   id: string;
@@ -100,18 +99,25 @@ export function ManeuverNode({
   useFrame(() => {
     if (groupRef.current) {
       const distance = camera.position.distanceTo(position);
-      const dynamicScale = distance * 0.01 * scale;
-      groupRef.current.scale.setScalar(dynamicScale);
+      const targetScale = distance * 0.01 * scale;
+      const currentScale = groupRef.current.scale.x; // assume uniform scale
+      const lerped = currentScale + (targetScale - currentScale) * 0.1; // smoothing factor
+      groupRef.current.scale.setScalar(lerped);
     }
   });
-
-  const handlePullerDragStart = (event: ThreeEvent<PointerEvent>, direction: Direction) => {
+  
+  const handlePullerDragStart = (
+    event: ThreeEvent<PointerEvent>,
+    direction: Direction,
+  ) => {
     event.stopPropagation();
     event.nativeEvent.stopPropagation();
     setIsDragging(true);
     setLocalDragging(direction);
     dragStartPos.current = event.point;
-    dragStartOffset.current = event.point.clone().sub(handlePositions[direction]);
+    dragStartOffset.current = event.point
+      .clone()
+      .sub(handlePositions[direction]);
     lastUpdateTime.current = Date.now();
     document.body.style.cursor = "grabbing";
 
@@ -127,7 +133,8 @@ export function ManeuverNode({
   };
 
   const handlePullerDrag = (event: ThreeEvent<PointerEvent>) => {
-    if (!isDragging || !dragStartPos.current || !dragStartOffset.current) return;
+    if (!isDragging || !dragStartPos.current || !dragStartOffset.current)
+      return;
 
     event.stopPropagation();
     event.nativeEvent.stopPropagation();
@@ -144,26 +151,28 @@ export function ManeuverNode({
 
     // Update the dragged handle position
     if (isDragging) {
-        const axisVector = directionVectors[isDragging].clone().normalize();
-        const dragVector = event.point.clone().sub(dragStartPos.current!);
-        const projection = axisVector.multiplyScalar(dragVector.dot(axisVector));
-        
-        // Calculate the new position
-        const newPosition = projection.clone().add(
-          directionVectors[isDragging].clone().multiplyScalar(baseHandleLength)
+      const axisVector = directionVectors[isDragging].clone().normalize();
+      const dragVector = event.point.clone().sub(dragStartPos.current!);
+      const projection = axisVector.multiplyScalar(dragVector.dot(axisVector));
+
+      // Calculate the new position
+      const newPosition = projection
+        .clone()
+        .add(
+          directionVectors[isDragging].clone().multiplyScalar(baseHandleLength),
         );
 
-        // Calculate the length from center
-        const length = newPosition.length();
+      // Calculate the length from center
+      const length = newPosition.length();
 
-        // Only update if the length is greater than or equal to baseHandleLength
-        // and the direction matches the handle's direction
-        if (length >= baseHandleLength) {
-            const dotProduct = newPosition.dot(directionVectors[isDragging]);
-            if (dotProduct > 0) {
-                newHandlePositions[isDragging] = newPosition;
-            }
+      // Only update if the length is greater than or equal to baseHandleLength
+      // and the direction matches the handle's direction
+      if (length >= baseHandleLength) {
+        const dotProduct = newPosition.dot(directionVectors[isDragging]);
+        if (dotProduct > 0) {
+          newHandlePositions[isDragging] = newPosition;
         }
+      }
     }
 
     setHandlePositions(newHandlePositions);
