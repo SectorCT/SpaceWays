@@ -545,11 +545,13 @@ function App() {
                 >
                     {/* Background stars - positioned far behind everything */}
                     <Stars 
-                        radius={6000000} 
+                        radius={600000000} 
                         depth={50} 
                         count={50000} 
                         factor={6} 
                         saturation={1} 
+                        fade={false}
+                        speed={1}
                     />
 
           {/* Celestial bodies */}
