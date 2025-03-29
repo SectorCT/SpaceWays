@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 # Reference date: January 1st, 2010 00:00:00 UTC
@@ -51,7 +51,7 @@ def seconds_to_date(seconds: float) -> str:
         >>> seconds_to_date(441504000.0)
         "2024-01-01 00:00:00"
     """
-    date = REFERENCE_DATE + datetime.timedelta(seconds=seconds)
+    date = REFERENCE_DATE + timedelta(seconds=seconds)
     return date.strftime("%Y-%m-%d %H:%M:%S")
 
 def get_trajectory_between_dates(trajectory_dict: dict, start_date: str, end_date: str) -> dict:

@@ -146,6 +146,7 @@ def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=STEPS_PER_QUARTER, snaps
     start_time: The time to start the simulation from (in seconds from reference date)
     """
     current_time = start_time if start_time is not None else 0.0
+    print(f"Starting simulation at time {current_time}")
 
     # Initialize trajectories from history if available
     trajectories = {}
@@ -154,6 +155,7 @@ def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=STEPS_PER_QUARTER, snaps
             trajectories[body.name] = json.loads(body.trajectory_json)
         else:
             trajectories[body.name] = {f"{current_time}": body.position.tolist()}
+    print(f"Initial trajectories: {trajectories}")
 
     # If start_time is provided, get the state at that time for each body
     if start_time is not None:
@@ -183,7 +185,9 @@ def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=STEPS_PER_QUARTER, snaps
         accelerations = new_acc
 
     if save_final:
+        print("Saving final trajectories to database")
         for body in bodies:
+            print(f"Saving trajectory for {body.name}: {trajectories[body.name]}")
             body.set_trajectory(trajectories[body.name])
             body.save()
 

@@ -161,11 +161,15 @@ async def apply_maneuver_endpoint(maneuver_data: ManeuverInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/trajectory_between_dates/", summary="Get trajectory data between two dates")
-async def get_trajectory_between_dates_endpoint(data: TrajectoryDateRangeInput):
+@app.get("/trajectory_between_dates/")
+async def get_trajectory_between_dates_endpoint(
+    body_name: str,
+    start_date: str,
+    end_date: str
+):
     try:
         # Get the body from database
-        body = await sync_to_async(BodyModel.objects.get)(name=data.body_name)
+        body = await sync_to_async(BodyModel.objects.get)(name=body_name)
         
         # Get the trajectory data
         trajectory = body.get_trajectory()
@@ -173,19 +177,16 @@ async def get_trajectory_between_dates_endpoint(data: TrajectoryDateRangeInput):
         # Filter trajectory between dates
         filtered_trajectory = get_trajectory_between_dates(
             trajectory,
-            data.start_date,
-            data.end_date
+            start_date,
+            end_date
         )
         
-        # Convert timestamps to dates for better readability
-        readable_trajectory = {
-            seconds_to_date(float(timestamp)): position
-            for timestamp, position in filtered_trajectory.items()
+        # Return the data in the requested format
+        return {
+            body_name: filtered_trajectory
         }
-        
-        return readable_trajectory
     except BodyModel.DoesNotExist:
-        raise HTTPException(status_code=404, detail=f"Body {data.body_name} not found")
+        raise HTTPException(status_code=404, detail=f"Body {body_name} not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -270,5 +271,38 @@ async def simulate_solar_system(bodies_data: List[dict]):
         )
 
         return trajectories
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/all_trajectories/")
+async def get_all_trajectories_endpoint(
+    start_date: str,
+    end_date: str
+):
+    try:
+        # Get all bodies from database
+        bodies = await get_all_bodies()
+        
+        # Create a dictionary to store all trajectories
+        all_trajectories = {}
+        
+        # Get trajectory data for each body
+        for body in bodies:
+            trajectory = body.get_trajectory()
+            
+            # Filter trajectory between dates
+            filtered_trajectory = get_trajectory_between_dates(
+                trajectory,
+                start_date,
+                end_date
+            )
+            
+            # Add to the result dictionary
+            all_trajectories[body.name] = filtered_trajectory
+        
+        return all_trajectories
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
