@@ -5,12 +5,11 @@ import { getOrbitalPosition } from "../getPositionFromOrbit";
 import * as THREE from "three";
 import { SelectionIndicator } from "./SelectionIndicator";
 import { useLoader } from "@react-three/fiber";
-import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
-import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Suspense } from "react";
 
 // Rotation offset in radians (x, y, z)
-const ROTATION_OFFSET = new THREE.Vector3(0, 0, 0); // You can adjust these values later
+const ROTATION_OFFSET = new THREE.Vector3(0, 0, -1.2);
 
 interface CelestialBodyProps {
   body: CelestialBody;
@@ -29,87 +28,46 @@ export function Spaceship({
   const [position, setPosition] = useState<THREE.Vector3>(new THREE.Vector3());
   const lastTimeRef = useRef(currentTime);
 
-  // Load textures
-  const textureLoader = new THREE.TextureLoader();
-  const baseColorTexture = textureLoader.load(
-    "/src/assets/Spaceship/Material.001_Base_color.jpg",
-  );
-  const emissiveTexture = textureLoader.load(
-    "/src/assets/Spaceship/Material.001_Emissive.jpg",
-  );
-  const metallicTexture = textureLoader.load(
-    "/src/assets/Spaceship/Material.001_Metallic.jpg",
-  );
-  const roughnessTexture = textureLoader.load(
-    "/src/assets/Spaceship/Material.001_Roughness.jpg",
-  );
-  const normalTexture = textureLoader.load(
-    "/src/assets/Spaceship/Material.001_Normal_DirectX.jpg",
-  );
-  const aoTexture = textureLoader.load(
-    "/src/assets/Spaceship/Material.001_Mixed_AO.jpg",
-  );
-
-  // Create PBR material with textures
-  const material = new THREE.MeshStandardMaterial({
-    map: baseColorTexture,
-    emissiveMap: emissiveTexture,
-    metalnessMap: metallicTexture,
-    roughnessMap: roughnessTexture,
-    normalMap: normalTexture,
-    aoMap: aoTexture,
-    metalness: 0.8,
-    roughness: 0.2,
-    emissive: new THREE.Color(0x00ffff),
-    emissiveIntensity: 0.5,
-  });
-
   // Load the spaceship model
-  const obj = useLoader(OBJLoader, "/src/assets/Spaceship/spaceship.obj");
-
-  // Apply material to all meshes in the model
-  useEffect(() => {
-    if (obj) {
-      obj.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          child.material = material;
-        }
-      });
-    }
-  }, [obj, material]);
+  const { scene } = useLoader(
+    GLTFLoader,
+    "/src/assets/Spaceship/spaceship.glb",
+  );
 
   useFrame(() => {
     if (meshRef.current) {
       // Update position based on simulation time
       const newPosition = getOrbitalPosition(body, currentTime);
       meshRef.current.position.set(newPosition.x, newPosition.y, newPosition.z);
-      setPosition(new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z));
+      setPosition(
+        new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z),
+      );
 
       // Calculate orbital angle based on time
-      const orbitalProgress = (currentTime.getTime() % (body.orbit.orbital_period * 1000)) / (body.orbit.orbital_period * 1000);
+      const orbitalProgress =
+        (currentTime.getTime() % (body.orbit.orbital_period * 1000)) /
+        (body.orbit.orbital_period * 1000);
       const angle = 2 * Math.PI * orbitalProgress;
-      
+
       // Calculate the next position to determine direction
       const nextTime = new Date(currentTime.getTime() + 100);
       const nextPosition = getOrbitalPosition(body, nextTime);
       const direction = new THREE.Vector3(
         nextPosition.x - newPosition.x,
         nextPosition.y - newPosition.y,
-        nextPosition.z - newPosition.z
-      ).normalize().multiplyScalar(-1);
+        nextPosition.z - newPosition.z,
+      )
+        .normalize()
+        .multiplyScalar(-1);
 
       // Create a rotation matrix to align with orbital path
       const up = new THREE.Vector3(0, 1, 0);
       const matrix = new THREE.Matrix4();
-      matrix.lookAt(
-        new THREE.Vector3(0, 0, 0),
-        direction,
-        up
-      );
-      
+      matrix.lookAt(new THREE.Vector3(0, 0, 0), direction, up);
+
       // Apply the rotation
       meshRef.current.quaternion.setFromRotationMatrix(matrix);
-      
+
       // Apply rotation offset
       meshRef.current.rotateX(ROTATION_OFFSET.x);
       meshRef.current.rotateY(ROTATION_OFFSET.y);
@@ -135,7 +93,7 @@ export function Spaceship({
         onPointerOver={() => (document.body.style.cursor = "pointer")}
         onPointerOut={() => (document.body.style.cursor = "auto")}
       >
-        <primitive object={obj} scale={2} />
+        <primitive object={scene} scale={2} />
         <pointLight
           position={[0, 0, 0]}
           color="#00ffff"
@@ -143,6 +101,8 @@ export function Spaceship({
           distance={10}
           decay={1}
         />
+        <ambientLight intensity={1} />
+        <directionalLight position={[5, 5, 5]} intensity={2} />
       </group>
 
       {isSelected && (
