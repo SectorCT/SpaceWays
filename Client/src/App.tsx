@@ -98,6 +98,26 @@ function App() {
   const zoomStartTimeRef = useRef<number>(performance.now());
   const zoomedBodyRef = useRef<CelestialBody | null>(sun);
 
+  // Add state for tracking if we're in wide view
+  const [isWideView, setIsWideView] = useState(false);
+
+  // Add state to track the Sun's screen position
+  const [sunScreenPosition, setSunScreenPosition] = useState({ x: 0, y: 0 });
+  
+  // Add state to track all planets' screen positions
+  const [planetScreenPositions, setPlanetScreenPositions] = useState({
+    Mercury: { x: 0, y: 0 },
+    Venus: { x: 0, y: 0 },
+    Earth: { x: 0, y: 0 },
+    Moon: { x: 0, y: 0 },
+    Mars: { x: 0, y: 0 },
+    Jupiter: { x: 0, y: 0 },
+    Saturn: { x: 0, y: 0 },
+    Uranus: { x: 0, y: 0 },
+    Neptune: { x: 0, y: 0 },
+    Spaceship: { x: 0, y: 0 }
+  });
+
   useEffect(() => {
     let lastTime = Date.now();
     const interval = setInterval(() => {
@@ -239,6 +259,7 @@ function App() {
                 // Update state
                 setIsZoomedIn(true);
                 setZoomLevel("normal");
+                setIsWideView(false); // Explicitly hide the Sun when zoomed in
                 
                 // Start the tracking animation
                 isZoomingRef.current = true;
@@ -247,6 +268,7 @@ function App() {
                 // No previous body but we have a selected body, zoom to it
                 zoomedBodyRef.current = selectedBody;
                 setIsZoomedIn(true);
+                setIsWideView(false); // Explicitly hide the Sun when zoomed in
                 
                 // Start the tracking animation
                 isZoomingRef.current = true;
@@ -742,6 +764,109 @@ function App() {
     }, 1000);
   };
 
+  // Track camera distance to determine when to show sun
+  useEffect(() => {
+    if (!orbitControlsRef.current) return;
+
+    const checkCameraDistance = () => {
+      const camera = orbitControlsRef.current?.object;
+      const target = orbitControlsRef.current?.target;
+      
+      if (camera && target) {
+        // Get the distance from the camera to the center
+        const distance = camera.position.distanceTo(target);
+        
+        // Threshold for showing the sun (when zoomed out very far)
+        const sunVisibilityThreshold = sun.radius * sun.scale * 50;
+        
+        // Update state based on distance
+        setIsWideView(distance > sunVisibilityThreshold);
+      }
+    };
+
+    // Check initially
+    checkCameraDistance();
+
+    // Setup event listener for camera change
+    const controls = orbitControlsRef.current;
+    controls.addEventListener('change', checkCameraDistance);
+
+    return () => {
+      controls.removeEventListener('change', checkCameraDistance);
+    };
+  }, [orbitControlsRef.current]);
+
+  // Add effect to calculate and update the Sun's and planets' screen positions
+  useEffect(() => {
+    if (!orbitControlsRef.current) return;
+
+    const updateCelestialPositions = () => {
+      const camera = orbitControlsRef.current.object;
+      if (!camera) return;
+
+      // Function to calculate screen position from world position
+      const calculateScreenPosition = (worldPos: { x: number, y: number, z: number }) => {
+        // Create Vector3 from the position
+        const vector = new THREE.Vector3(worldPos.x, worldPos.y, worldPos.z);
+        
+        // Project to screen coordinates
+        const widthHalf = window.innerWidth / 2;
+        const heightHalf = window.innerHeight / 2;
+        
+        // Clone the vector to avoid modifying the original
+        const screenPosition = vector.clone();
+        
+        // Project the 3D position to screen space
+        screenPosition.project(camera);
+        
+        // Convert to CSS coordinates
+        const x = (screenPosition.x * widthHalf) + widthHalf;
+        const y = -(screenPosition.y * heightHalf) + heightHalf;
+        
+        return { x, y };
+      };
+
+      // Get the current time values for calculations
+      const currentTime = simulationTime.getTime();
+      const startTime = simulationStartTime.getTime();
+
+      // Update Sun position
+      const sunPosition = getPositionFromOrbit2(sun.orbit, currentTime, startTime);
+      setSunScreenPosition(calculateScreenPosition(sunPosition));
+      
+      // Update all planet positions
+      const newPlanetPositions = {
+        Mercury: calculateScreenPosition(getPositionFromOrbit2(mercury.orbit, currentTime, startTime)),
+        Venus: calculateScreenPosition(getPositionFromOrbit2(venus.orbit, currentTime, startTime)),
+        Earth: calculateScreenPosition(getPositionFromOrbit2(earth.orbit, currentTime, startTime)),
+        Moon: calculateScreenPosition(getPositionFromOrbit2(moon.orbit, currentTime, startTime)),
+        Mars: calculateScreenPosition(getPositionFromOrbit2(mars.orbit, currentTime, startTime)),
+        Jupiter: calculateScreenPosition(getPositionFromOrbit2(jupiter.orbit, currentTime, startTime)),
+        Saturn: calculateScreenPosition(getPositionFromOrbit2(saturn.orbit, currentTime, startTime)),
+        Uranus: calculateScreenPosition(getPositionFromOrbit2(uranus.orbit, currentTime, startTime)),
+        Neptune: calculateScreenPosition(getPositionFromOrbit2(neptune.orbit, currentTime, startTime)),
+        Spaceship: calculateScreenPosition(getPositionFromOrbit2(spaceship.orbit, currentTime, startTime))
+      };
+      
+      setPlanetScreenPositions(newPlanetPositions);
+    };
+
+    // Set up an animation frame loop to continuously update positions
+    let animationFrameId: number;
+    const animate = () => {
+      updateCelestialPositions();
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    
+    animate();
+    
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [simulationTime, orbitControlsRef.current]);
+
   useEffect(() => {
     THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
   }, []);
@@ -1012,6 +1137,334 @@ function App() {
             height: zoomIndicatorStyle.height + "px",
           }}
         />
+      )}
+      {/* 2D Sun representation in system view */}
+      {(isWideView || zoomLevel === "extreme") && (
+        <>
+          {/* Orbit rings centered on the Sun's position */}
+          <div 
+            style={{
+              position: "absolute",
+              left: `${sunScreenPosition.x - 5}px`,
+              top: `${sunScreenPosition.y - 3}px`,
+              width: "80px",
+              height: "80px",
+              borderRadius: "50%",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+              zIndex: 890
+            }}
+          />
+          <div 
+            style={{
+              position: "absolute",
+              left: `${sunScreenPosition.x - 5}px`,
+              top: `${sunScreenPosition.y - 3}px`,
+              width: "120px",
+              height: "120px",
+              borderRadius: "50%",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+              zIndex: 890
+            }}
+          />
+          <div 
+            style={{
+              position: "absolute",
+              left: `${sunScreenPosition.x - 5}px`,
+              top: `${sunScreenPosition.y - 3}px`,
+              width: "160px",
+              height: "160px",
+              borderRadius: "50%",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+              zIndex: 890
+            }}
+          />
+          <div 
+            style={{
+              position: "absolute",
+              left: `${sunScreenPosition.x - 5}px`,
+              top: `${sunScreenPosition.y - 3}px`,
+              width: "200px",
+              height: "200px",
+              borderRadius: "50%",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+              zIndex: 890
+            }}
+          />
+          <div 
+            style={{
+              position: "absolute",
+              left: `${sunScreenPosition.x - 5}px`,
+              top: `${sunScreenPosition.y - 3}px`,
+              width: "260px",
+              height: "260px",
+              borderRadius: "50%",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+              zIndex: 890
+            }}
+          />
+          <div 
+            style={{
+              position: "absolute",
+              left: `${sunScreenPosition.x - 5}px`,
+              top: `${sunScreenPosition.y - 3}px`,
+              width: "320px",
+              height: "320px",
+              borderRadius: "50%",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+              zIndex: 890
+            }}
+          />
+          <div 
+            style={{
+              position: "absolute",
+              left: `${sunScreenPosition.x - 5}px`,
+              top: `${sunScreenPosition.y - 3}px`,
+              width: "380px",
+              height: "380px",
+              borderRadius: "50%",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+              zIndex: 890
+            }}
+          />
+          <div 
+            style={{
+              position: "absolute",
+              left: `${sunScreenPosition.x - 5}px`,
+              top: `${sunScreenPosition.y - 3}px`,
+              width: "440px",
+              height: "440px",
+              borderRadius: "50%",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+              zIndex: 890
+            }}
+          />
+          
+          {/* Sun */}
+          <div 
+            className={`sun-container ${selectedBody?.name === sun.name ? 'selected' : ''}`}
+            style={{
+              position: "absolute",
+              left: `${sunScreenPosition.x - 5}px`,
+              top: `${sunScreenPosition.y - 3}px`,
+              transform: "translate(-50%, -50%)",
+              width: "60px",
+              height: "60px",
+              zIndex: 900,
+              cursor: "pointer",
+              pointerEvents: "auto"
+            }}
+            onClick={() => handleSelectBody(sun)}
+          >
+            <div 
+              className="sun-2d" 
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: "50%",
+                transform: "translate(-50%, -50%)",
+                animation: selectedBody?.name === sun.name ? "selectedSun 3s infinite alternate" : "sunPulse 4s infinite ease-in-out",
+                pointerEvents: "auto"
+              }}
+              onClick={() => handleSelectBody(sun)}
+            />
+            <div 
+              className="planet-label" 
+              style={{
+                position: "absolute",
+                top: "-8px"
+              }}
+              onClick={() => handleSelectBody(sun)}
+            >
+              Sun
+            </div>
+          </div>
+          
+          {/* Mercury */}
+          <div 
+            className={`planet-container ${selectedBody?.name === mercury.name ? 'selected' : ''}`}
+            style={{
+              position: "absolute",
+              left: `${planetScreenPositions.Mercury.x}px`,
+              top: `${planetScreenPositions.Mercury.y}px`,
+              transform: "translate(-50%, -50%)",
+              width: "30px",
+              height: "30px"
+            }}
+            onClick={() => handleSelectBody(mercury)}
+          >
+            <div className="planet-point mercury-point" onClick={() => handleSelectBody(mercury)}></div>
+            <div className="planet-label" onClick={() => handleSelectBody(mercury)}>Mercury</div>
+          </div>
+          
+          {/* Venus */}
+          <div 
+            className={`planet-container ${selectedBody?.name === venus.name ? 'selected' : ''}`}
+            style={{
+              position: "absolute", 
+              left: `${planetScreenPositions.Venus.x}px`,
+              top: `${planetScreenPositions.Venus.y}px`,
+              transform: "translate(-50%, -50%)",
+              width: "36px",
+              height: "36px"
+            }}
+            onClick={() => handleSelectBody(venus)}
+          >
+            <div className="planet-point venus-point" onClick={() => handleSelectBody(venus)}></div>
+            <div className="planet-label" onClick={() => handleSelectBody(venus)}>Venus</div>
+          </div>
+          
+          {/* Earth */}
+          <div 
+            className={`planet-container ${selectedBody?.name === earth.name ? 'selected' : ''}`}
+            style={{
+              position: "absolute",
+              left: `${planetScreenPositions.Earth.x}px`,
+              top: `${planetScreenPositions.Earth.y}px`,
+              transform: "translate(-50%, -50%)",
+              width: "38px",
+              height: "38px"
+            }}
+            onClick={() => handleSelectBody(earth)}
+          >
+            <div className="planet-point earth-point" onClick={() => handleSelectBody(earth)}></div>
+            <div className="planet-label" onClick={() => handleSelectBody(earth)}>Earth</div>
+          </div>
+          
+          {/* Moon */}
+          <div 
+            className={`planet-container ${selectedBody?.name === moon.name ? 'selected' : ''}`}
+            style={{
+              position: "absolute",
+              left: `${planetScreenPositions.Moon.x}px`,
+              top: `${planetScreenPositions.Moon.y}px`,
+              transform: "translate(-50%, -50%)",
+              width: "26px",
+              height: "26px"
+            }}
+            onClick={() => handleSelectBody(moon)}
+          >
+            <div className="planet-point moon-point" onClick={() => handleSelectBody(moon)}></div>
+            <div className="planet-label" onClick={() => handleSelectBody(moon)}>Moon</div>
+          </div>
+          
+          {/* Mars */}
+          <div 
+            className={`planet-container ${selectedBody?.name === mars.name ? 'selected' : ''}`}
+            style={{
+              position: "absolute",
+              left: `${planetScreenPositions.Mars.x}px`,
+              top: `${planetScreenPositions.Mars.y}px`,
+              transform: "translate(-50%, -50%)",
+              width: "34px", 
+              height: "34px"
+            }}
+            onClick={() => handleSelectBody(mars)}
+          >
+            <div className="planet-point mars-point" onClick={() => handleSelectBody(mars)}></div>
+            <div className="planet-label" onClick={() => handleSelectBody(mars)}>Mars</div>
+          </div>
+          
+          {/* Jupiter */}
+          <div 
+            className={`planet-container ${selectedBody?.name === jupiter.name ? 'selected' : ''}`}
+            style={{
+              position: "absolute",
+              left: `${planetScreenPositions.Jupiter.x}px`,
+              top: `${planetScreenPositions.Jupiter.y}px`,
+              transform: "translate(-50%, -50%)",
+              width: "48px",
+              height: "48px"
+            }}
+            onClick={() => handleSelectBody(jupiter)}
+          >
+            <div className="planet-point jupiter-point" onClick={() => handleSelectBody(jupiter)}></div>
+            <div className="planet-label" onClick={() => handleSelectBody(jupiter)}>Jupiter</div>
+          </div>
+          
+          {/* Saturn */}
+          <div 
+            className={`planet-container ${selectedBody?.name === saturn.name ? 'selected' : ''}`}
+            style={{
+              position: "absolute",
+              left: `${planetScreenPositions.Saturn.x}px`,
+              top: `${planetScreenPositions.Saturn.y}px`,
+              transform: "translate(-50%, -50%)",
+              width: "45px",
+              height: "45px"
+            }}
+            onClick={() => handleSelectBody(saturn)}
+          >
+            <div className="planet-point saturn-point" onClick={() => handleSelectBody(saturn)}></div>
+            <div className="planet-label" onClick={() => handleSelectBody(saturn)}>Saturn</div>
+          </div>
+          
+          {/* Uranus */}
+          <div 
+            className={`planet-container ${selectedBody?.name === uranus.name ? 'selected' : ''}`}
+            style={{
+              position: "absolute",
+              left: `${planetScreenPositions.Uranus.x}px`,
+              top: `${planetScreenPositions.Uranus.y}px`,
+              transform: "translate(-50%, -50%)",
+              width: "42px",
+              height: "42px"
+            }}
+            onClick={() => handleSelectBody(uranus)}
+          >
+            <div className="planet-point uranus-point" onClick={() => handleSelectBody(uranus)}></div>
+            <div className="planet-label" onClick={() => handleSelectBody(uranus)}>Uranus</div>
+          </div>
+          
+          {/* Neptune */}
+          <div 
+            className={`planet-container ${selectedBody?.name === neptune.name ? 'selected' : ''}`}
+            style={{
+              position: "absolute",
+              left: `${planetScreenPositions.Neptune.x}px`,
+              top: `${planetScreenPositions.Neptune.y}px`,
+              transform: "translate(-50%, -50%)",
+              width: "42px",
+              height: "42px"
+            }}
+            onClick={() => handleSelectBody(neptune)}
+          >
+            <div className="planet-point neptune-point" onClick={() => handleSelectBody(neptune)}></div>
+            <div className="planet-label" onClick={() => handleSelectBody(neptune)}>Neptune</div>
+          </div>
+          
+          {/* Spaceship */}
+          <div 
+            className={`planet-container ${selectedBody?.name === spaceship.name ? 'selected' : ''}`}
+            style={{
+              position: "absolute",
+              left: `${planetScreenPositions.Spaceship.x}px`,
+              top: `${planetScreenPositions.Spaceship.y}px`,
+              transform: "translate(-50%, -50%)",
+              width: "28px",
+              height: "28px"
+            }}
+            onClick={() => handleSelectBody(spaceship)}
+          >
+            <div className="planet-point spaceship-point" onClick={() => handleSelectBody(spaceship)}></div>
+            <div className="planet-label" onClick={() => handleSelectBody(spaceship)}>Spaceship</div>
+          </div>
+        </>
       )}
 
       {selectedBody && (

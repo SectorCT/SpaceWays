@@ -406,3 +406,213 @@ body {
 .zoom-level-indicator.extreme {
   color: #ff88cc;
 }
+
+/* Add a pulsing animation for the 2D Sun */
+@keyframes sunPulse {
+  0% {
+    box-shadow: 0 0 20px 10px rgba(255, 180, 0, 0.4);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    box-shadow: 0 0 30px 15px rgba(255, 180, 0, 0.6);
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    box-shadow: 0 0 20px 10px rgba(255, 180, 0, 0.4);
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.sun-container {
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 900;
+}
+
+.sun-container:hover .planet-label {
+  opacity: 1;
+}
+
+.sun-container.selected .sun-2d {
+  /* Animation now controlled in JSX with inline styles */
+  /* animation: selectedSun 3s infinite alternate; */
+}
+
+.sun-container.selected .planet-label {
+  opacity: 1;
+  background-color: rgba(255, 80, 0, 0.8);
+  box-shadow: 0 0 8px rgba(255, 150, 0, 0.6);
+}
+
+@keyframes selectedSun {
+  0% {
+    box-shadow: 0 0 30px 10px rgba(255, 180, 0, 0.6);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    box-shadow: 0 0 40px 15px rgba(255, 180, 0, 0.8);
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+}
+
+.sun-2d {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,190,1) 0%, rgba(255,203,43,1) 41%, rgba(249,141,0,1) 100%);
+  box-shadow: 0 0 30px rgba(255, 203, 43, 0.8);
+  position: absolute;
+  top: -8px;  
+  pointer-events: auto;
+  z-index: 900;
+  animation: sunPulse 4s infinite ease-in-out;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+  cursor: pointer;
+}
+
+/* Planet representation styles */
+.planet-point {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  z-index: 900;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+  opacity: 1;
+  transition: opacity 0.3s ease;
+
+  cursor: pointer;
+}
+
+.planet-label {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  transform: translate(-50%, -100%);
+  top: -10px;
+  left: 50%;
+  
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: auto;
+  z-index: 901;
+  white-space: nowrap;
+  margin-top: 0;
+}
+
+.planet-container {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.planet-container:hover .planet-label {
+  opacity: 1;
+}
+
+.planet-container.selected .planet-point {
+  animation: selectedPlanet 2s infinite alternate;
+}
+
+.planet-container.selected .planet-label {
+  opacity: 1;
+  background-color: rgba(20, 80, 150, 0.8);
+  box-shadow: 0 0 8px rgba(80, 160, 255, 0.6);
+}
+
+@keyframes selectedPlanet {
+  0% {
+    box-shadow: 0 0 15px 5px rgba(80, 160, 255, 0.5);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    box-shadow: 0 0 20px 8px rgba(80, 160, 255, 0.7);
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+}
+
+.mercury-point {
+  width: 10px;
+  height: 10px;
+  background: radial-gradient(circle, #eee 0%, #bbb 60%, #999 100%);
+  box-shadow: 0 0 10px 3px rgba(255, 255, 255, 0.3);
+}
+
+.venus-point {
+  width: 16px;
+  height: 16px;
+  background: radial-gradient(circle, #f9f3e3 0%, #e6c171 60%, #c19b32 100%);
+  box-shadow: 0 0 10px 3px rgba(230, 193, 113, 0.5);
+}
+
+.earth-point {
+  width: 18px;
+  height: 18px;
+  background: radial-gradient(circle, #cceeff 0%, #4287f5 60%, #1155cc 100%);
+  box-shadow: 0 0 10px 3px rgba(66, 135, 245, 0.5);
+}
+
+.moon-point {
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle, #eee 0%, #ccc 60%, #999 100%);
+  box-shadow: 0 0 5px 1px rgba(255, 255, 255, 0.3);
+}
+
+.mars-point {
+  width: 14px;
+  height: 14px;
+  background: radial-gradient(circle, #ffddcc 0%, #e27b58 60%, #c1440e 100%);
+  box-shadow: 0 0 10px 3px rgba(226, 123, 88, 0.5);
+}
+
+.jupiter-point {
+  width: 28px;
+  height: 28px;
+  background: radial-gradient(circle, #faecd8 0%, #e6c171 40%, #bc6f32 80%, #8b5321 100%);
+  box-shadow: 0 0 15px 5px rgba(230, 193, 113, 0.5);
+}
+
+.saturn-point {
+  width: 25px;
+  height: 25px;
+  background: radial-gradient(circle, #f9f3e3 0%, #e6d4a1 40%, #d1ac59 80%, #b0842e 100%);
+  box-shadow: 0 0 15px 5px rgba(209, 172, 89, 0.5);
+}
+
+.uranus-point {
+  width: 22px;
+  height: 22px;
+  background: radial-gradient(circle, #e3f9ff 0%, #a8e1f5 40%, #72c1da 80%, #4f95b0 100%);
+  box-shadow: 0 0 15px 5px rgba(114, 193, 218, 0.5);
+}
+
+.neptune-point {
+  width: 22px;
+  height: 22px;
+  background: radial-gradient(circle, #cce6ff 0%, #4169e1 40%, #21399f 80%, #162b7d 100%);
+  box-shadow: 0 0 15px 5px rgba(65, 105, 225, 0.5);
+}
+
+.spaceship-point {
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, #ffffff 0%, #00ffff 60%, #0088ff 100%);
+  box-shadow: 0 0 10px 5px rgba(0, 255, 255, 0.8);
+  animation: blinkPoint 1.5s infinite alternate;
+}
+
+@keyframes blinkPoint {
+  0% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+}
