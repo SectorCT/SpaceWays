@@ -11,6 +11,7 @@ import { ManeuverNode } from "./components/ManeuverNode";
 import { Vector3 } from "three";
 import { DateSelector } from "./components/DateSelector";
 import "./App.css";
+import { Spaceship } from "./components/Spaceship";
 
 interface PromptButton {
     label: string;
@@ -52,6 +53,15 @@ const moon: CelestialBody = {
   mass: 7.348e22,
   scale: 0.005,
   texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg"
+}
+
+const spaceship: CelestialBody = {
+  name: "Spaceship",
+  orbit: exampleOrbit,
+  radius: 70, // Increased from 10 to 100 for a much bigger clickable area
+  color: "#00ffff",
+  mass: 1000,
+  scale: 0.1,
 }
 
 const earth: CelestialBody = {
@@ -283,10 +293,19 @@ function App() {
                         isSelected={selectedBody?.name === earth.name}
                         onSelect={handleSelectBody}
                     />
-                    <CelestialBodyComponent 
-                        body={moon} 
-                        currentTime={simulationTime} 
+                    {/* Moon */}
+                    {/* <CelestialBodyComponent
+                        body={moon}
+                        currentTime={currentTime}
                         isSelected={selectedBody?.name === moon.name}
+                        onSelect={handleBodySelect}
+                    /> */}
+
+                    {/* Spaceship */}
+                    <Spaceship
+                        body={spaceship}
+                        currentTime={simulationTime}
+                        isSelected={selectedBody?.name === spaceship.name}
                         onSelect={handleSelectBody}
                     />
                     
