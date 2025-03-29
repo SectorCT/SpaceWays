@@ -1,0 +1,218 @@
+.date-selector {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 400px;
+  max-width: calc(100vw - 40px); /* Prevent overflow on small screens */
+  background: rgba(10, 15, 30, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 
+              0 5px 15px rgba(0, 0, 0, 0.3);
+  margin-top: 10px;
+  z-index: 1001;
+  color: white;
+  overflow: hidden;
+  border: 1px solid rgba(70, 130, 255, 0.3);
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Adjust position when it would go off-screen */
+@media (max-width: 450px) {
+  .date-selector {
+    max-width: 90vw;
+    width: 350px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-height: 700px) {
+  .date-selector {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  
+  .date-selector-body {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.date-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: rgba(40, 70, 130, 0.7);
+  border-bottom: 1px solid rgba(70, 130, 255, 0.3);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.date-selector-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.date-selector-body {
+  padding: 15px;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.form-group input,
+.form-group select {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(70, 130, 255, 0.3);
+  color: white;
+  padding: 7px 10px;
+  border-radius: 4px;
+  outline: none;
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: rgba(70, 130, 255, 0.7);
+  box-shadow: 0 0 8px rgba(70, 130, 255, 0.5);
+}
+
+.date-preview {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px;
+  border-radius: 6px;
+  margin: 15px 0;
+  text-align: center;
+  border: 1px solid rgba(70, 130, 255, 0.3);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.quick-dates {
+  margin-top: 15px;
+}
+
+.quick-dates h4 {
+  margin: 0 0 10px 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.quick-dates-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.quick-date-button {
+  background: rgba(40, 70, 130, 0.4);
+  border: 1px solid rgba(70, 130, 255, 0.3);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+}
+
+.quick-date-button:hover {
+  background: rgba(60, 100, 170, 0.5);
+  border-color: rgba(70, 130, 255, 0.5);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 15px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(70, 130, 255, 0.2);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
+.cancel-button,
+.apply-button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.cancel-button {
+  background: rgba(50, 50, 50, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.cancel-button:hover {
+  background: rgba(70, 70, 70, 0.8);
+}
+
+.apply-button {
+  background: rgba(0, 100, 200, 0.7);
+  border: 1px solid rgba(70, 130, 255, 0.5);
+  color: white;
+}
+
+.apply-button:hover {
+  background: rgba(20, 120, 220, 0.8);
+  box-shadow: 0 0 10px rgba(70, 130, 255, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 450px) {
+  .form-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .quick-dates-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* For very small screens, ensure buttons remain usable */
+@media (max-width: 320px) {
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .form-actions button {
+    width: 100%;
+  }
+} 

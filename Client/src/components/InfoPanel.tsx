@@ -10,7 +10,6 @@ interface InfoPanelProps {
 
 export function InfoPanel({ selectedBody, onClose }: InfoPanelProps) {
   const [headerStyle, setHeaderStyle] = useState<React.CSSProperties>({});
-  const [accentColor, setAccentColor] = useState<string>("");
   const [lightAccentColor, setLightAccentColor] = useState<string>("");
   const [textAccentColor, setTextAccentColor] = useState<string>("");
 
@@ -36,7 +35,6 @@ export function InfoPanel({ selectedBody, onClose }: InfoPanelProps) {
       });
       
       // Set accent colors for other elements
-      setAccentColor(mainColorRGBA);
       setLightAccentColor(lighterColorRGBA);
       setTextAccentColor(textColorHex);
     }

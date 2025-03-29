@@ -4,8 +4,9 @@ import { CelestialBodyComponent } from "./components/CelestialBody";
 import { OrbitLine } from "./components/OrbitLine";
 import { CelestialBody } from "./types/CelestialBody";
 import { Orbit } from "./types/orbit";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { InfoPanel } from "./components/InfoPanel";
+import { DateSelector } from "./components/DateSelector";
 import "./App.css";
 
 const exampleOrbit: Orbit = {
@@ -63,6 +64,8 @@ function App() {
     const [timeSpeed, setTimeSpeed] = useState(1); // 1 = real time, 2 = 2x speed, etc.
     const [isPaused, setIsPaused] = useState(false);
     const [selectedBody, setSelectedBody] = useState<CelestialBody | null>(null);
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const timeControlsRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         console.log("Time simulation effect running");
@@ -79,12 +82,38 @@ function App() {
         return () => clearInterval(interval);
     }, [timeSpeed, isPaused]);
 
+    // Handle screen edges for date picker
+    useEffect(() => {
+        if (isDatePickerOpen && timeControlsRef.current) {
+            const rect = timeControlsRef.current.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            // Check if date picker would go off screen
+            if (rect.left + 400 > viewportWidth) {
+                timeControlsRef.current.classList.add('date-picker-right-aligned');
+            } else {
+                timeControlsRef.current.classList.remove('date-picker-right-aligned');
+            }
+            
+            if (rect.bottom + 400 > viewportHeight) {
+                timeControlsRef.current.classList.add('date-picker-top-aligned');
+            } else {
+                timeControlsRef.current.classList.remove('date-picker-top-aligned');
+            }
+        }
+    }, [isDatePickerOpen]);
+
     const handleSpeedChange = (speed: number) => {
         setTimeSpeed(speed);
     };
 
-    const handleSelectBody = (body: CelestialBody) => {        
+    const handleSelectBody = (body: CelestialBody) => {
+        console.log("Selected body:", body.name);
+        
+        // Toggle selection if clicking the same body
         if (selectedBody && selectedBody.name === body.name) {
+            console.log("Deselecting body:", body.name);
             setSelectedBody(null);
         } else {
             setSelectedBody(body);
@@ -98,9 +127,23 @@ function App() {
     // Handle background clicks to deselect
     const handleBackgroundClick = (e: React.MouseEvent) => {
         console.log("Background clicked");
+        // Only deselect if clicking on the canvas background, not on UI elements
         if (selectedBody && e.target === e.currentTarget) {
             setSelectedBody(null);
         }
+    };
+
+    // Handle setting a specific date
+    const handleSetDate = (newDate: Date) => {
+        setSimulationTime(newDate);
+        setIsDatePickerOpen(false);
+        // Pause simulation when a specific date is set
+        setIsPaused(true);
+    };
+
+    // Handle showing/hiding the date picker
+    const toggleDatePicker = () => {
+        setIsDatePickerOpen(!isDatePickerOpen);
     };
 
     // Debug render state
@@ -157,13 +200,22 @@ function App() {
             </div>
 
             {/* Time controls with new stylish UI */}
-            <div className="time-controls">
+            <div className="time-controls" ref={timeControlsRef}>
                 <div className="time-label">Simulation Time</div>
                 <div className="time-value">{simulationTime.toLocaleString()}</div>
                 
                 <div className="speed-display">
                     <span className="speed-label">Speed:</span>
                     <span className="speed-value">{timeSpeed}x</span>
+                </div>
+                
+                <div className="controls-row">
+                    <button 
+                        className={`time-button pause-button ${isPaused ? 'paused' : ''}`}
+                        onClick={() => setIsPaused(!isPaused)}
+                    >
+                        {isPaused ? 'Resume' : 'Pause'}
+                    </button>
                 </div>
                 
                 <div className="controls-row" style={{ marginTop: '8px' }}>
@@ -181,16 +233,23 @@ function App() {
                         Faster <span className="speed-icon">→</span>
                     </button>
                 </div>
-
                 
-                <div className="controls-row">
+                <div className="controls-row" style={{ marginTop: '12px' }}>
                     <button 
-                        className={`time-button pause-button ${isPaused ? 'paused' : ''}`}
-                        onClick={() => setIsPaused(!isPaused)}
+                        className="time-button date-button"
+                        onClick={toggleDatePicker}
                     >
-                        {isPaused ? 'Resume' : 'Pause'}
+                        Set Specific Date
                     </button>
                 </div>
+                
+                {isDatePickerOpen && (
+                    <DateSelector 
+                        currentDate={simulationTime}
+                        onSetDate={handleSetDate}
+                        onClose={() => setIsDatePickerOpen(false)}
+                    />
+                )}
             </div>
 
             {/* Debug info */}
