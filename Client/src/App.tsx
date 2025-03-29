@@ -6,7 +6,27 @@ import { CelestialBody } from "./types/CelestialBody";
 import { Orbit } from "./types/orbit";
 import { useState, useEffect } from "react";
 import { InfoPanel } from "./components/InfoPanel";
+import { PromptMenu } from "./components/PromptMenu";
+import { ManeuverNode } from "./components/ManeuverNode";
+import { Vector3 } from "three";
 import "./App.css";
+
+interface PromptButton {
+    label: string;
+    onClick: () => Vector3 | void;
+}
+
+interface PromptState {
+    isOpen: boolean;
+    position: { x: number; y: number };
+    buttons: PromptButton[];
+}
+
+interface ManeuverNodeData {
+    id: string;
+    position: Vector3;
+    deltaV: Vector3;
+}
 
 const exampleOrbit: Orbit = {
   name: "Example Orbit",
@@ -58,14 +78,20 @@ const earth: CelestialBody = {
 };
 
 function App() {
-    console.log("App component rendering");
     const [simulationTime, setSimulationTime] = useState<Date>(new Date());
     const [timeSpeed, setTimeSpeed] = useState(1); // 1 = real time, 2 = 2x speed, etc.
     const [isPaused, setIsPaused] = useState(false);
     const [selectedBody, setSelectedBody] = useState<CelestialBody | null>(null);
+    const [prompt, setPrompt] = useState<PromptState>({
+        isOpen: false,
+        position: { x: 0, y: 0 },
+        buttons: []
+    });
+    const [maneuverNodes, setManeuverNodes] = useState<ManeuverNodeData[]>([]);
+    const [currentManeuverVector, setCurrentManeuverVector] = useState<Vector3>(new Vector3(0, 0, 0));
+    const [isDraggingHandle, setIsDraggingHandle] = useState(false);
 
     useEffect(() => {
-        console.log("Time simulation effect running");
         let lastTime = Date.now();
         const interval = setInterval(() => {
             if (!isPaused) {
@@ -108,13 +134,50 @@ function App() {
         }
     };
 
-    // Debug render state
-    console.log("Current render state:", {
-        simulationTime: simulationTime.toISOString(),
-        timeSpeed,
-        isPaused,
-        selectedBody: selectedBody?.name || 'none'
-    });
+    const handleOrbitClick = (event: MouseEvent, buttons: PromptButton[]) => {
+        console.log("Orbit clicked");
+        event.preventDefault();
+        
+        // Get the hover point from the button's onClick return value
+        const createManeuverButton = buttons.find(b => b.label === "Create Maneuver Node");
+        if (createManeuverButton) {
+            const hoverPoint = createManeuverButton.onClick();
+            if (hoverPoint instanceof Vector3) {
+                const newDeltaV = new Vector3(0, 0, 0);
+                // Create new node with zero deltaV
+                const newNode: ManeuverNodeData = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    position: hoverPoint,
+                    deltaV: newDeltaV.clone()
+                };
+                setManeuverNodes(prev => [...prev, newNode]);
+                setCurrentManeuverVector(newDeltaV);
+                closePrompt();
+            }
+        } else {
+            setPrompt({
+                isOpen: true,
+                position: { x: event.clientX, y: event.clientY },
+                buttons
+            });
+        }
+    };
+
+    const closePrompt = () => {
+        setPrompt(prev => ({ ...prev, isOpen: false }));
+    };
+
+    const handleManeuverUpdate = (id: string, deltaV: Vector3, isDragging: boolean) => {
+        setIsDraggingHandle(isDragging);
+        
+        // Update the maneuver nodes first
+        setManeuverNodes(prev => prev.map(node => 
+            node.id === id ? { ...node, deltaV: deltaV.clone() } : node
+        ));
+
+        // Always update currentManeuverVector to show the active node's deltaV
+        setCurrentManeuverVector(deltaV.clone());
+    };
 
     return (
         <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
@@ -150,13 +213,32 @@ function App() {
                     />
                     
                     {/* Orbit lines */}
-                    <OrbitLine orbit={exampleOrbit} color="#00ff00" />
+                    <OrbitLine 
+                        orbit={exampleOrbit} 
+                        color="#00ff00" 
+                        onOrbitClick={handleOrbitClick}
+                        maneuverNodes={maneuverNodes}
+                    />
+                    
+                    {/* Render all maneuver nodes */}
+                    {maneuverNodes.map(node => (
+                        <ManeuverNode
+                            key={node.id}
+                            id={node.id}
+                            position={node.position}
+                            deltaV={node.deltaV}
+                            scale={2}
+                            onUpdate={handleManeuverUpdate}
+                            setIsDragging={setIsDraggingHandle}
+                        />
+                    ))}
                     
                     {/* Controls */}
                     <OrbitControls 
-                        enablePan={true}
-                        enableZoom={true}
-                        enableRotate={true}
+                        enablePan={!isDraggingHandle}
+                        enableZoom={!isDraggingHandle}
+                        enableRotate={!isDraggingHandle}
+                        enabled={!isDraggingHandle}
                     />
                 </Canvas>
             </div>
@@ -201,19 +283,36 @@ function App() {
             <div style={{ 
                 position: 'absolute', 
                 top: 20, 
-                right: 20, 
+                left: '50%',
+                transform: 'translateX(-50%)',
                 color: 'white',
                 zIndex: 1000,
                 background: 'rgba(0,0,0,0.7)',
                 padding: '10px',
-                borderRadius: '5px'
+                borderRadius: '5px',
+                fontFamily: 'monospace',
+                fontSize: '14px',
+                textAlign: 'center'
             }}>
+                ΔV: {currentManeuverVector ? 
+                    `X: ${currentManeuverVector.x.toFixed(2)} Y: ${currentManeuverVector.y.toFixed(2)} Z: ${currentManeuverVector.z.toFixed(2)} m/s` 
+                    : 'No maneuver'}
+                <br />
+                Magnitude: {currentManeuverVector ? currentManeuverVector.length().toFixed(2) + ' m/s' : '0 m/s'}
             </div>
 
             {/* Info panel */}
             <InfoPanel 
                 selectedBody={selectedBody} 
                 onClose={handleCloseInfoPanel} 
+            />
+
+            {/* Orbit Action Prompt */}
+            <PromptMenu
+                isOpen={prompt.isOpen}
+                position={prompt.position}
+                buttons={prompt.buttons}
+                onClose={closePrompt}
             />
         </div>
     )

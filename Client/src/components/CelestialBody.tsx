@@ -19,8 +19,6 @@ export function CelestialBodyComponent({
     isSelected, 
     onSelect 
 }: CelestialBodyProps) {
-    console.log(`Rendering CelestialBodyComponent for ${body.name}, isSelected=${isSelected}`);
-    
     const meshRef = useRef<THREE.Mesh>(null)
     const [texture, setTexture] = useState<THREE.Texture | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -43,22 +41,16 @@ export function CelestialBodyComponent({
     }, [isSelected, texture, body.color]);
     
     useEffect(() => {
-        console.log(`Loading texture for ${body.name}: ${body.texture || 'none'}`);
         if (body.texture) {
-            console.log('Starting texture load for:', body.name)
             setIsLoading(true)
             const loader = new THREE.TextureLoader()
             
             loader.load(
                 body.texture,
                 (loadedTexture) => {
-                    console.log('Texture loaded successfully for:', body.name)
                     loadedTexture.needsUpdate = true
                     setTexture(loadedTexture)
                     setIsLoading(false)
-                },
-                (progress) => {
-                    console.log(`Loading progress for ${body.name}:`, (progress.loaded / progress.total * 100) + '%')
                 },
                 (error) => {
                     console.error('Error loading texture for', body.name, ':', error)
@@ -88,10 +80,7 @@ export function CelestialBodyComponent({
 
     // Initial position
     const initialPosition = getOrbitalPosition(body, currentTime)
-    console.log(`Initial position for ${body.name}:`, initialPosition);
-
     const handleClick = (event: any) => {
-        console.log(`${body.name} clicked`);
         event.stopPropagation();
         onSelect(body);
     };
@@ -100,8 +89,6 @@ export function CelestialBodyComponent({
         console.log(`${body.name} is still loading, not rendering`);
         return null // Don't render anything while loading
     }
-
-    console.log(`Rendering ${body.name} with texture: ${texture ? 'loaded' : 'none'}`);
 
     // Define the material color based on selection state and texture
     const materialColor = isSelected 

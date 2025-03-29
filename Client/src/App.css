@@ -192,3 +192,21 @@ body {
     background-position: -200% 0;
   }
 }
+
+.orbit-prompt-button {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    margin: 4px 0;
+    background-color: #333;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s;
+}
+
+.orbit-prompt-button:hover {
+    background-color: #444;
+}
