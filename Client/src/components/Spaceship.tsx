@@ -9,6 +9,9 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
 import { Suspense } from "react";
 
+// Rotation offset in radians (x, y, z)
+const ROTATION_OFFSET = new THREE.Vector3(0.80, 0, 1.5); // You can adjust these values later
+
 interface CelestialBodyProps {
   body: CelestialBody;
   currentTime: Date;
@@ -84,11 +87,29 @@ export function Spaceship({
         new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z),
       );
 
-      // Calculate rotation based on time difference
+      // Calculate orbital velocity for orientation
       const timeDiff =
-        (currentTime.getTime() - lastTimeRef.current.getTime()) / 1000; // Convert to seconds
-      const rotationSpeed = (2 * Math.PI) / body.orbit.orbital_period;
-      meshRef.current.rotation.y += rotationSpeed * timeDiff;
+        (currentTime.getTime() - lastTimeRef.current.getTime()) / 1000;
+      const angle = (2 * Math.PI * timeDiff) / body.orbit.orbital_period;
+      
+      // Calculate velocity vector
+      const velocity = new THREE.Vector3(
+        Math.sin(angle),
+        -Math.cos(angle) * Math.sin(body.orbit.inclination),
+        -Math.cos(angle) * Math.cos(body.orbit.inclination)
+      );
+
+      // Make the ship face its direction of travel
+      if (velocity.length() > 0) {
+        meshRef.current.lookAt(
+          meshRef.current.position.clone().add(velocity.normalize())
+        );
+        
+        // Apply rotation offset
+        meshRef.current.rotation.x += ROTATION_OFFSET.x;
+        meshRef.current.rotation.y += ROTATION_OFFSET.y;
+        meshRef.current.rotation.z += ROTATION_OFFSET.z;
+      }
 
       lastTimeRef.current = currentTime;
     }
