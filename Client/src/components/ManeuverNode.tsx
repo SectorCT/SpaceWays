@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { Sphere, Cylinder } from "@react-three/drei";
-import { Vector3, Group } from "three";
+import { Vector3, Group, Raycaster, BufferGeometry, Float32BufferAttribute } from "three";
 import { useFrame, useThree, ThreeEvent } from "@react-three/fiber";
 
 const directionVectors: Record<Direction, Vector3> = {
@@ -42,23 +42,23 @@ export function ManeuverNode({
   onSelect,
 }: ManeuverNodeProps) {
   const groupRef = useRef<Group>(null);
-  const { camera } = useThree();
+  const { camera, mouse } = useThree();
   const [isDragging, setLocalDragging] = useState<Direction | null>(null);
   const [currentDeltaV, setCurrentDeltaV] = useState<Vector3>(deltaV.clone());
   const dragStartPos = useRef<Vector3 | null>(null);
   const dragStartDeltaV = useRef<Vector3 | null>(null);
   const lastUpdateTime = useRef<number>(0);
   const dragStartOffset = useRef<Vector3 | null>(null);
+  const raycaster = useRef<Raycaster>(new Raycaster());
 
   // Base sizes that will be scaled by camera distance
   const baseHandleSize = 0.3;
   const baseHandleLength = 1.5;
   const baseSphereRadius = 0.4;
   const baseHandleThickness = 0.1;
+  const deltaVSensitivity = 0.1;
 
-  const [handlePositions, setHandlePositions] = useState<
-    Record<Direction, Vector3>
-  >({
+  const [handlePositions, setHandlePositions] = useState<Record<Direction, Vector3>>({
     prograde: new Vector3(0, 0, baseHandleLength),
     retrograde: new Vector3(0, 0, -baseHandleLength),
     normal: new Vector3(0, baseHandleLength, 0),
@@ -69,12 +69,12 @@ export function ManeuverNode({
 
   // Colors for different axes
   const colors = {
-    prograde: "#00ff00", // Green
-    retrograde: "#ff00ff", // Magenta
-    normal: "#00ffff", // Cyan
-    antinormal: "#ffff00", // Yellow
-    radialIn: "#ff0000", // Red
-    radialOut: "#0000ff", // Blue
+    prograde: "#00ff00",
+    retrograde: "#ff00ff",
+    normal: "#00ffff",
+    antinormal: "#ffff00",
+    radialIn: "#ff0000",
+    radialOut: "#0000ff",
   };
 
   // Update currentDeltaV when prop changes
@@ -100,82 +100,88 @@ export function ManeuverNode({
     if (groupRef.current) {
       const distance = camera.position.distanceTo(position);
       const targetScale = distance * 0.01 * scale;
-      const currentScale = groupRef.current.scale.x; // assume uniform scale
-      const lerped = currentScale + (targetScale - currentScale) * 0.1; // smoothing factor
+      const currentScale = groupRef.current.scale.x;
+      const lerped = currentScale + (targetScale - currentScale) * 0.1;
       groupRef.current.scale.setScalar(lerped);
     }
   });
 
-  const handlePullerDragStart = (
-    event: ThreeEvent<PointerEvent>,
-    direction: Direction,
-  ) => {
+  // Handle drag updates
+  useFrame(() => {
+    if (isDragging && dragStartPos.current && dragStartOffset.current && dragStartDeltaV.current) {
+      raycaster.current.setFromCamera(mouse, camera);
+      const intersects = raycaster.current.intersectObjects(groupRef.current?.children || [], true);
+
+      if (intersects.length > 0) {
+        const intersect = intersects[0];
+        const axisVector = directionVectors[isDragging].clone().normalize();
+        const dragVector = intersect.point.clone().sub(dragStartPos.current!);
+        const projection = axisVector.multiplyScalar(dragVector.dot(axisVector));
+
+        // Calculate the new position
+        const newPosition = projection.clone().add(
+          directionVectors[isDragging].clone().multiplyScalar(baseHandleLength)
+        );
+
+        // Calculate the length from center
+        const length = newPosition.length();
+
+        // Only update if the length is greater than or equal to baseHandleLength
+        // and the direction matches the handle's direction
+        if (length >= baseHandleLength) {
+          const dotProduct = newPosition.dot(directionVectors[isDragging]);
+          if (dotProduct > 0) {
+            // Update handle position
+            setHandlePositions(prev => ({
+              ...prev,
+              [isDragging]: newPosition
+            }));
+
+            // Calculate deltaV change based on handle extension
+            const extension = length - baseHandleLength;
+            const deltaVChange = extension * deltaVSensitivity;
+
+            // Update deltaV based on direction
+            const newDeltaV = dragStartDeltaV.current!.clone();
+            switch (isDragging) {
+              case 'prograde':
+                newDeltaV.z += deltaVChange;
+                break;
+              case 'retrograde':
+                newDeltaV.z -= deltaVChange;
+                break;
+              case 'normal':
+                newDeltaV.y += deltaVChange;
+                break;
+              case 'antinormal':
+                newDeltaV.y -= deltaVChange;
+                break;
+              case 'radialIn':
+                newDeltaV.x -= deltaVChange;
+                break;
+              case 'radialOut':
+                newDeltaV.x += deltaVChange;
+                break;
+            }
+
+            setCurrentDeltaV(newDeltaV);
+            onUpdate(id, newDeltaV, true);
+          }
+        }
+      }
+    }
+  });
+
+  const handlePullerDragStart = (event: ThreeEvent<PointerEvent>, direction: Direction) => {
     event.stopPropagation();
     event.nativeEvent.stopPropagation();
     setIsDragging(true);
     setLocalDragging(direction);
     dragStartPos.current = event.point;
-    dragStartOffset.current = event.point
-      .clone()
-      .sub(handlePositions[direction]);
+    dragStartDeltaV.current = currentDeltaV.clone();
+    dragStartOffset.current = event.point.clone().sub(handlePositions[direction]);
     lastUpdateTime.current = Date.now();
     document.body.style.cursor = "grabbing";
-
-    // Set initial handle positions based on direction
-    setHandlePositions({
-      prograde: new Vector3(0, 0, baseHandleLength),
-      retrograde: new Vector3(0, 0, -baseHandleLength),
-      normal: new Vector3(0, baseHandleLength, 0),
-      antinormal: new Vector3(0, -baseHandleLength, 0),
-      radialIn: new Vector3(-baseHandleLength, 0, 0),
-      radialOut: new Vector3(baseHandleLength, 0, 0),
-    });
-  };
-
-  const handlePullerDrag = (event: ThreeEvent<PointerEvent>) => {
-    if (!isDragging || !dragStartPos.current || !dragStartOffset.current)
-      return;
-
-    event.stopPropagation();
-    event.nativeEvent.stopPropagation();
-
-    // Update handle positions based on direction
-    const newHandlePositions = {
-      prograde: new Vector3(0, 0, baseHandleLength),
-      retrograde: new Vector3(0, 0, -baseHandleLength),
-      normal: new Vector3(0, baseHandleLength, 0),
-      antinormal: new Vector3(0, -baseHandleLength, 0),
-      radialIn: new Vector3(-baseHandleLength, 0, 0),
-      radialOut: new Vector3(baseHandleLength, 0, 0),
-    };
-
-    // Update the dragged handle position
-    if (isDragging) {
-      const axisVector = directionVectors[isDragging].clone().normalize();
-      const dragVector = event.point.clone().sub(dragStartPos.current!);
-      const projection = axisVector.multiplyScalar(dragVector.dot(axisVector));
-
-      // Calculate the new position
-      const newPosition = projection
-        .clone()
-        .add(
-          directionVectors[isDragging].clone().multiplyScalar(baseHandleLength),
-        );
-
-      // Calculate the length from center
-      const length = newPosition.length();
-
-      // Only update if the length is greater than or equal to baseHandleLength
-      // and the direction matches the handle's direction
-      if (length >= baseHandleLength) {
-        const dotProduct = newPosition.dot(directionVectors[isDragging]);
-        if (dotProduct > 0) {
-          newHandlePositions[isDragging] = newPosition;
-        }
-      }
-    }
-
-    setHandlePositions(newHandlePositions);
   };
 
   const handlePullerDragEnd = (event?: ThreeEvent<PointerEvent>) => {
@@ -186,11 +192,12 @@ export function ManeuverNode({
     setIsDragging(false);
     setLocalDragging(null);
     dragStartPos.current = null;
+    dragStartDeltaV.current = null;
     dragStartOffset.current = null;
     lastUpdateTime.current = 0;
     document.body.style.cursor = "auto";
 
-    // Reset handle position to base length
+    // Reset handle positions to default length
     setHandlePositions({
       prograde: new Vector3(0, 0, baseHandleLength),
       retrograde: new Vector3(0, 0, -baseHandleLength),
@@ -222,7 +229,10 @@ export function ManeuverNode({
           position={[handlePos.x, handlePos.y, handlePos.z]}
           args={[baseHandleSize, 16, 16]}
           onPointerDown={(e) => handlePullerDragStart(e, direction)}
-          onPointerMove={handlePullerDrag}
+          onPointerMove={(e) => {
+            e.stopPropagation();
+            e.nativeEvent.stopPropagation();
+          }}
           onPointerUp={handlePullerDragEnd}
         >
           <meshBasicMaterial color={colors[direction]} />
