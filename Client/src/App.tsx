@@ -79,6 +79,83 @@ const sun: CelestialBody = {
   dayLength: 24,
 };
 
+const mercury: CelestialBody = {
+  name: "Mercury",
+  orbit: exampleOrbit2["Sun"], // Temporarily use Sun's orbit
+  radius: 2439.7,
+  color: "#A0522D",
+  mass: 3.285e23,
+  scale: 1,
+  texture: "/src/assets/2k_mercury.jpg",
+  dayLength: 1407.6,
+};
+
+const venus: CelestialBody = {
+  name: "Venus",
+  orbit: exampleOrbit2["Sun"], // Temporarily use Sun's orbit
+  radius: 6051.8,
+  color: "#DEB887",
+  mass: 4.867e24,
+  scale: 1,
+  texture: "/src/assets/2k_venus.jpg",
+  dayLength: -5832.5,
+};
+
+const mars: CelestialBody = {
+  name: "Mars",
+  orbit: exampleOrbit2["Earth"],
+  radius: 3389.5,
+  color: "#CD5C5C",
+  mass: 6.39e23,
+  scale: 1,
+  texture: "/src/assets/2k_mars.jpg",
+  dayLength: 24.6,
+};
+
+const jupiter: CelestialBody = {
+  name: "Jupiter",
+  orbit: exampleOrbit2["Earth"],
+  radius: 69911,
+  color: "#DEB887",
+  mass: 1.898e27,
+  scale: 1,
+  texture: "/src/assets/2k_jupiter.jpg",
+  dayLength: 9.9,
+};
+
+const saturn: CelestialBody = {
+  name: "Saturn",
+  orbit: exampleOrbit2["Earth"],
+  radius: 58232,
+  color: "#FFE4B5",
+  mass: 5.683e26,
+  scale: 1,
+  texture: "/src/assets/2k_saturn.jpg",
+  dayLength: 10.7,
+};
+
+const uranus: CelestialBody = {
+  name: "Uranus",
+  orbit: exampleOrbit2["Earth"],
+  radius: 25362,
+  color: "#87CEEB",
+  mass: 8.681e25,
+  scale: 1,
+  texture: "/src/assets/2k_uranus.jpg",
+  dayLength: -17.2,
+};
+
+const neptune: CelestialBody = {
+  name: "Neptune",
+  orbit: exampleOrbit2["Earth"],
+  radius: 24622,
+  color: "#4169E1",
+  mass: 1.024e26,
+  scale: 1,
+  texture: "/src/assets/2k_neptune.jpg",
+  dayLength: 16.1,
+};
+
 const ZOOM_OUT_DISTANCE = 10000; // Fixed zoom out distance
 
 function App() {
@@ -585,6 +662,62 @@ function App() {
             simulationStartTime={simulationStartTime}
           />
 
+          <CelestialBodyComponent
+            body={mercury}
+            currentTime={simulationTime}
+            isSelected={selectedBody?.name === mercury.name}
+            onSelect={handleSelectBody}
+            simulationStartTime={simulationStartTime}
+          />
+
+          <CelestialBodyComponent
+            body={venus}
+            currentTime={simulationTime}
+            isSelected={selectedBody?.name === venus.name}
+            onSelect={handleSelectBody}
+            simulationStartTime={simulationStartTime}
+          />
+
+          <CelestialBodyComponent
+            body={mars}
+            currentTime={simulationTime}
+            isSelected={selectedBody?.name === mars.name}
+            onSelect={handleSelectBody}
+            simulationStartTime={simulationStartTime}
+          />
+
+          <CelestialBodyComponent
+            body={jupiter}
+            currentTime={simulationTime}
+            isSelected={selectedBody?.name === jupiter.name}
+            onSelect={handleSelectBody}
+            simulationStartTime={simulationStartTime}
+          />
+
+          <CelestialBodyComponent
+            body={saturn}
+            currentTime={simulationTime}
+            isSelected={selectedBody?.name === saturn.name}
+            onSelect={handleSelectBody}
+            simulationStartTime={simulationStartTime}
+          />
+
+          <CelestialBodyComponent
+            body={uranus}
+            currentTime={simulationTime}
+            isSelected={selectedBody?.name === uranus.name}
+            onSelect={handleSelectBody}
+            simulationStartTime={simulationStartTime}
+          />
+
+          <CelestialBodyComponent
+            body={neptune}
+            currentTime={simulationTime}
+            isSelected={selectedBody?.name === neptune.name}
+            onSelect={handleSelectBody}
+            simulationStartTime={simulationStartTime}
+          />
+
           <OrbitLine2
             orbit={earth.orbit}
             color={earth.color}
@@ -602,8 +735,56 @@ function App() {
           />
 
           <OrbitLine2
-            orbit={exampleOrbit2["Sun"]}
-            color="#ff0000"
+            orbit={mercury.orbit}
+            color={mercury.color}
+            onOrbitClick={handleOrbitClick}
+            maneuverNodes={maneuverNodes}
+            selectedManeuver={selectedManeuver}
+          />
+
+          <OrbitLine2
+            orbit={venus.orbit}
+            color={venus.color}
+            onOrbitClick={handleOrbitClick}
+            maneuverNodes={maneuverNodes}
+            selectedManeuver={selectedManeuver}
+          />
+
+          <OrbitLine2
+            orbit={mars.orbit}
+            color={mars.color}
+            onOrbitClick={handleOrbitClick}
+            maneuverNodes={maneuverNodes}
+            selectedManeuver={selectedManeuver}
+          />
+
+          <OrbitLine2
+            orbit={jupiter.orbit}
+            color={jupiter.color}
+            onOrbitClick={handleOrbitClick}
+            maneuverNodes={maneuverNodes}
+            selectedManeuver={selectedManeuver}
+          />
+
+          <OrbitLine2
+            orbit={saturn.orbit}
+            color={saturn.color}
+            onOrbitClick={handleOrbitClick}
+            maneuverNodes={maneuverNodes}
+            selectedManeuver={selectedManeuver}
+          />
+
+          <OrbitLine2
+            orbit={uranus.orbit}
+            color={uranus.color}
+            onOrbitClick={handleOrbitClick}
+            maneuverNodes={maneuverNodes}
+            selectedManeuver={selectedManeuver}
+          />
+
+          <OrbitLine2
+            orbit={neptune.orbit}
+            color={neptune.color}
             onOrbitClick={handleOrbitClick}
             maneuverNodes={maneuverNodes}
             selectedManeuver={selectedManeuver}
