@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CelestialBody } from "../types/CelestialBody";
-import { getOrbitalPosition } from "../getPositionFromOrbit";
+import { getPositionFromOrbit2 } from "../getPositionFromOrbit";
 import * as THREE from "three";
 import { SelectionIndicator } from "./SelectionIndicator";
 import { useLoader } from "@react-three/fiber";
@@ -38,32 +38,45 @@ export function Spaceship({
   useFrame(() => {
     if (meshRef.current) {
       // Update position based on simulation time
-      const newPosition = getOrbitalPosition(body, currentTime);
-      
+      const newPosition = getPositionFromOrbit2(body.orbit, currentTime.getTime(), 0);
+
       // Calculate the direction to the center
-      const directionToCenter = new THREE.Vector3(0, 0, 0).sub(new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z)).normalize();
-      
+      const directionToCenter = new THREE.Vector3(0, 0, 0)
+        .sub(new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z))
+        .normalize();
+
       // Move the ship closer to the center by a fraction of its radius
-      const offset = directionToCenter.multiplyScalar(body.radius * body.scale * 0.2);
-      
+      const offset = directionToCenter.multiplyScalar(
+        body.radius * body.scale * 0.2,
+      );
+
       // Apply the offset to the position
-      const positionVector = new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z);
+      const positionVector = new THREE.Vector3(
+        newPosition.x,
+        newPosition.y,
+        newPosition.z,
+      );
       const adjustedPosition = positionVector.add(offset);
-      
-      // Add a small offset to the left
-                
-      meshRef.current.position.set(adjustedPosition.x, adjustedPosition.y, adjustedPosition.z);
+
+      meshRef.current.position.set(
+        adjustedPosition.x,
+        adjustedPosition.y,
+        adjustedPosition.z,
+      );
       setPosition(adjustedPosition);
 
       // Calculate orbital angle based on time
+      const timestamps = Object.keys(body.orbit).map(Number).sort((a, b) => a - b);
+      const orbitalPeriod = timestamps[timestamps.length - 1] - timestamps[0];
+      const currentTimeMs = currentTime.getTime();
       const orbitalProgress =
-        (currentTime.getTime() % (body.orbit.orbital_period * 1000)) /
-        (body.orbit.orbital_period * 1000);
+        (currentTimeMs % (orbitalPeriod * 1000)) /
+        (orbitalPeriod * 1000);
       const angle = 2 * Math.PI * orbitalProgress;
 
       // Calculate the next position to determine direction
       const nextTime = new Date(currentTime.getTime() + 100);
-      const nextPosition = getOrbitalPosition(body, nextTime);
+      const nextPosition = getPositionFromOrbit2(body.orbit, nextTime.getTime(), 0);
       const direction = new THREE.Vector3(
         nextPosition.x - newPosition.x,
         nextPosition.y - newPosition.y,
@@ -90,7 +103,7 @@ export function Spaceship({
   });
 
   // Initial position
-  const initialPosition = getOrbitalPosition(body, currentTime);
+  const initialPosition = getPositionFromOrbit2(body.orbit, currentTime.getTime(), 0);
   const handleClick = (event: any) => {
     event.stopPropagation();
     onSelect(body);
@@ -109,17 +122,17 @@ export function Spaceship({
         <Sphere
           args={[body.radius * body.scale, 32, 32]}
           onClick={handleClick}
-          onPointerOver={() => document.body.style.cursor = 'pointer'}
-          onPointerOut={() => document.body.style.cursor = 'auto'}
+          onPointerOver={() => document.body.style.cursor = "pointer"}
+          onPointerOut={() => document.body.style.cursor = "auto"}
         >
-          <meshBasicMaterial transparent opacity={0} />
+          <meshBasicMaterial color="#00ff00" wireframe />
         </Sphere>
 
         {/* Visual spaceship model */}
-        <primitive object={scene} scale={1.5} />
+        <primitive object={scene} scale={0.5} />
         <pointLight
           position={[0, 0, 0]}
-          color="#00ffff"
+          color="#00ff00"
           intensity={2}
           distance={10}
           decay={1}

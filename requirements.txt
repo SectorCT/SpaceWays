@@ -1,9 +1,0 @@
-django
-psycopg2-binary
-gunicorn
-numpy
-requests
-poliastro
-uvicorn
-fastapi
-astropy

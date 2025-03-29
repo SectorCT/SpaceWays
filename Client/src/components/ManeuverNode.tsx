@@ -4,8 +4,6 @@ import {
   Vector3,
   Group,
   Raycaster,
-  BufferGeometry,
-  Float32BufferAttribute,
 } from "three";
 import { useFrame, useThree, ThreeEvent } from "@react-three/fiber";
 

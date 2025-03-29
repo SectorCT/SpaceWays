@@ -1,4 +1,5 @@
 import { CelestialBody } from '../types/CelestialBody';
+import { OrbitData2 } from '../types/Orbit2';
 import './InfoPanel.css';
 import { useEffect, useState } from 'react';
 import * as THREE from 'three';
@@ -79,8 +80,44 @@ export function InfoPanel({ selectedBody, onClose }: InfoPanelProps) {
   
 
   const formatDistance = (distance: number) => {
-    if (distance >= 1000) return `${(distance / 1000).toFixed(2)} million km`;
+    if (distance >= 1000) return `${(distance / 1000).toFixed(2)}k km`;
     return `${distance.toFixed(2)} km`;
+  };
+
+  // Calculate orbital parameters from OrbitData2
+  const calculateOrbitalParameters = (orbit: OrbitData2) => {
+    const timestamps = Object.keys(orbit).map(Number).sort((a, b) => a - b);
+    if (timestamps.length < 2) return null;
+
+    // Get all positions
+    const positions = timestamps.map(t => orbit[t.toFixed(1)]);
+    
+    // Find apoapsis and periapsis
+    let maxDist = 0;
+    let minDist = Infinity;
+    
+    positions.forEach(pos => {
+        const dist = Math.sqrt(pos[0] * pos[0] + pos[1] * pos[1] + pos[2] * pos[2]);
+        maxDist = Math.max(maxDist, dist);
+        minDist = Math.min(minDist, dist);
+    });
+
+    // Calculate orbital period
+    const period = timestamps[timestamps.length - 1] - timestamps[0];
+
+    // Calculate semi-major axis
+    const semiMajorAxis = (maxDist + minDist) / 2;
+
+    // Calculate eccentricity
+    const eccentricity = (maxDist - minDist) / (maxDist + minDist);
+
+    return {
+        apoapsis: maxDist,
+        periapsis: minDist,
+        semiMajorAxis,
+        eccentricity,
+        period
+    };
   };
 
   // Custom styles for the panel based on the celestial body
@@ -97,6 +134,8 @@ export function InfoPanel({ selectedBody, onClose }: InfoPanelProps) {
   const sectionHeaderStyle: React.CSSProperties = {
     color: textAccentColor
   };
+
+  const orbitalParams = calculateOrbitalParameters(selectedBody.orbit);
 
   return (
     <div className="info-panel" style={panelStyle}>
@@ -117,29 +156,31 @@ export function InfoPanel({ selectedBody, onClose }: InfoPanelProps) {
           </div>
         </div>
 
-        <div className="info-section">
-          <h3 style={sectionHeaderStyle}>Orbital Parameters</h3>
-          <div className="info-row">
-            <span className="info-label">Semi-major axis:</span>
-            <span className="info-value">{formatDistance(selectedBody.orbit.semi_major_axis)}</span>
+        {orbitalParams && (
+          <div className="info-section">
+            <h3 style={sectionHeaderStyle}>Orbital Parameters</h3>
+            <div className="info-row">
+              <span className="info-label">Semi-major axis:</span>
+              <span className="info-value">{formatDistance(orbitalParams.semiMajorAxis)}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">Eccentricity:</span>
+              <span className="info-value">{orbitalParams.eccentricity.toFixed(4)}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">Orbital period:</span>
+              <span className="info-value">{(orbitalParams.period / 86400).toFixed(2)} days</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">Apoapsis:</span>
+              <span className="info-value">{formatDistance(orbitalParams.apoapsis)}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">Periapsis:</span>
+              <span className="info-value">{formatDistance(orbitalParams.periapsis)}</span>
+            </div>
           </div>
-          <div className="info-row">
-            <span className="info-label">Eccentricity:</span>
-            <span className="info-value">{selectedBody.orbit.eccentricity.toFixed(4)}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Orbital period:</span>
-            <span className="info-value">{(selectedBody.orbit.orbital_period / 86400).toFixed(2)} days</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Apoapsis:</span>
-            <span className="info-value">{formatDistance(selectedBody.orbit.apoapsis)}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Periapsis:</span>
-            <span className="info-value">{formatDistance(selectedBody.orbit.periapsis)}</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -208,6 +208,8 @@ body {
 
 .orbit-prompt-button:hover {
     background-color: #444;
+}
+
 /* Add styles for the date button */
 .date-button {
   width: 100%;
@@ -300,4 +302,107 @@ body {
   font-style: italic;
 }
 
+/* Zoom button styles */
+.zoom-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: rgba(15, 20, 35, 0.85);
+  color: #88ccff;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 0 20px rgba(0, 100, 255, 0.25),
+              inset 0 0 10px rgba(0, 100, 255, 0.1);
+  border: 1px solid rgba(0, 150, 255, 0.3);
+  opacity: 0.9;
+}
+
+.zoom-button.zoomed-in {
+  background: rgba(25, 30, 45, 0.9);
+  color: #ff88cc;
+  box-shadow: 0 0 20px rgba(255, 100, 150, 0.25),
+              inset 0 0 10px rgba(255, 100, 150, 0.1);
+  border: 1px solid rgba(255, 100, 150, 0.3);
+}
+
+.zoom-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 25px rgba(0, 150, 255, 0.4),
+              inset 0 0 15px rgba(0, 150, 255, 0.2);
+  opacity: 1;
+}
+
+.zoom-button.zoomed-in:hover {
+  box-shadow: 0 0 25px rgba(255, 100, 150, 0.4),
+              inset 0 0 15px rgba(255, 100, 150, 0.2);
+}
+
+.zoom-button:active {
+  transform: scale(0.95);
+}
+
+/* Zoom animation */
+@keyframes zoomAnimation {
+  0% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+
+.zoom-indicator {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  border: 2px solid #88ccff;
+  z-index: 999;
+  animation: zoomAnimation 1s ease-out forwards;
+}
+
+.zoom-indicator.zoom-out {
+  border-color: #ff88cc;
+  animation: zoomAnimation 1s ease-in reverse forwards;
+}
+
+/* Zoom level indicator */
+.zoom-level-indicator {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(15, 20, 35, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  z-index: 1000;
+  transition: opacity 0.5s ease;
+  opacity: 0;
+  border: 1px solid rgba(0, 150, 255, 0.3);
+}
+
+.zoom-level-indicator.visible {
+  opacity: 1;
+}
+
+.zoom-level-indicator.wide {
+  color: #88ccff;
+}
+
+.zoom-level-indicator.extreme {
+  color: #ff88cc;
 }

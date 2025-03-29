@@ -1,16 +1,20 @@
-import { useRef, useState, useMemo } from 'react';
-import { Orbit } from '../types/orbit';
+import { useRef, useState, useMemo, useEffect } from 'react';
 import { Line, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
 import { ThreeEvent, useThree, useFrame } from '@react-three/fiber';
+import { OrbitData2 } from '../types/Orbit2';
+import { ORBIT_SCALE } from '../consts/spaceScale';
+
+// Maximum number of points to render for the orbit line
+const MAX_POINTS = 20000;
 
 interface PromptButton {
     label: string;
     onClick: (params?: any) => void;
 }
 
-interface OrbitLineProps {
-    orbit: Orbit;
+interface OrbitLine2Props {
+    orbit: OrbitData2;
     color?: string;
     dashed?: boolean;
     dashScale?: number;
@@ -21,7 +25,7 @@ interface OrbitLineProps {
     selectedManeuver?: string | null;
 }
 
-export function OrbitLine({ 
+export function OrbitLine2({ 
     orbit, 
     color = '#ffffff', 
     dashed = false,
@@ -30,13 +34,13 @@ export function OrbitLine({
     gapSize = 2,
     onOrbitClick,
     maneuverNodes = [],
-    selectedManeuver = null
-}: OrbitLineProps) {
-    const points = useRef<THREE.Vector3[]>([]);
+    selectedManeuver = null,
+}: OrbitLine2Props) {
+    const [points, setPoints] = useState<THREE.Vector3[]>([]);
     const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
     const sphereRef = useRef<THREE.Mesh>(null);
     const { camera, size } = useThree();
-    const baseSize = 0.5; // Reduced from 1.5 to 0.5
+    const baseSize = 0.5;
 
     // Function to convert 3D position to screen coordinates
     const toScreenPosition = (position: THREE.Vector3) => {
@@ -68,47 +72,47 @@ export function OrbitLine({
         }
     });
 
-    // Generate points for the orbit
-    const generateOrbitPoints = () => {
-        points.current = [];  // Clear existing points
-        const { semi_major_axis: a, eccentricity: e, inclination, raan, arg_periapsis } = orbit;
-        
-        // Convert angles to radians
-        const i = inclination * (Math.PI / 180);
-        const Ω = raan * (Math.PI / 180);
-        const ω = arg_periapsis * (Math.PI / 180);
+    // Function to reduce points while maintaining orbit shape
+    const reducePoints = (points: THREE.Vector3[], targetCount: number): THREE.Vector3[] => {
+        if (points.length <= targetCount) return points;
 
-        // Generate 200 points for a smooth orbit
-        for (let angle = 0; angle <= 2 * Math.PI; angle += (2 * Math.PI) / 200) {
-            // Calculate radius at this angle
-            const r = (a * (1 - e * e)) / (1 + e * Math.cos(angle));
+        const result: THREE.Vector3[] = [];
+        const step = points.length / targetCount;
 
-            // Calculate position in orbital plane
-            const x_prime = r * Math.cos(angle);
-            const y_prime = r * Math.sin(angle);
-
-            // Rotate to 3D Space using Inclination, RAAN, and Argument of Periapsis
-            const cosΩ = Math.cos(Ω), sinΩ = Math.sin(Ω);
-            const cosω = Math.cos(ω), sinω = Math.sin(ω);
-            const cosi = Math.cos(i), sini = Math.sin(i);
-
-            const x = (cosΩ * cosω - sinΩ * sinω * cosi) * x_prime +
-                     (-cosΩ * sinω - sinΩ * cosω * cosi) * y_prime;
-            const y = (sinΩ * cosω + cosΩ * sinω * cosi) * x_prime +
-                     (-sinΩ * sinω + cosΩ * cosω * cosi) * y_prime;
-            const z = (sinω * sini) * x_prime + (cosω * sini) * y_prime;
-
-            points.current.push(new THREE.Vector3(x, y, z));
+        for (let i = 0; i < targetCount; i++) {
+            const index = Math.floor(i * step);
+            result.push(points[index]);
         }
+
+        // Always include the last point to close the orbit
+        if (points.length > 0) {
+            result.push(points[points.length - 1]);
+        }
+
+        console.log(result);
+
+        return result;
     };
 
-    // Generate points when component mounts
-    generateOrbitPoints();
+    // Generate points for the orbit preview
+    useEffect(() => {
+        // Sort timestamps to ensure points are in chronological order
+        const timestamps = Object.keys(orbit).sort((a, b) => parseFloat(a) - parseFloat(b));
+        
+        // Generate all points first
+        const allPoints = timestamps.map(timestamp => {
+            const [x, y, z] = orbit[timestamp];
+            return new THREE.Vector3(x * ORBIT_SCALE, y * ORBIT_SCALE, z * ORBIT_SCALE);
+        });
+
+        // Reduce points to target count
+        setPoints(reducePoints(allPoints, MAX_POINTS));
+    }, [orbit]);
 
     // Create a curve from the points for the tube geometry
     const curve = useMemo(() => {
-        return new THREE.CatmullRomCurve3(points.current);
-    }, []);
+        return new THREE.CatmullRomCurve3(points);
+    }, [points]);
 
     const handleTubeHover = (event: ThreeEvent<PointerEvent>) => {
         event.stopPropagation();
@@ -148,53 +152,56 @@ export function OrbitLine({
 
     const handleTubeClick = (event: ThreeEvent<MouseEvent>) => {
         event.stopPropagation();
-        // Don't allow orbit clicks when a maneuver is selected
-        if (selectedManeuver) {
-            return;
+        
+        if (selectedManeuver) return;
+        
+        const mousePoint = event.point;
+        const curvePoints = curve.getPoints(200);
+        let closestPoint = curvePoints[0];
+        let minDistance = mousePoint.distanceTo(curvePoints[0]);
+
+        for (const point of curvePoints) {
+            const distance = mousePoint.distanceTo(point);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestPoint = point;
+            }
         }
-        if (onOrbitClick && hoverPoint) {
-            const buttons: PromptButton[] = [
-                {
-                    label: "Create Maneuver",
-                    onClick: () => onOrbitClick(event.nativeEvent, [
-                        {
-                            label: "Create Maneuver Node",
-                            onClick: () => {
-                                console.log("Creating maneuver at", hoverPoint);
-                                return hoverPoint;
-                            }
-                        }
-                    ])
-                },
-            ];
-            
-            event.nativeEvent.stopPropagation();
-            onOrbitClick(event.nativeEvent, buttons);
+
+        // Check if the click point would be near any existing maneuver node
+        const screenPos = toScreenPosition(closestPoint);
+        if (!isNearManeuverNode(screenPos) && onOrbitClick) {
+            onOrbitClick(event.nativeEvent, []);
         }
     };
+    
 
     return (
         <group>
             {/* Visible line */}
-            <Line
-                points={points.current}
-                color={color}
-                lineWidth={1}
-                dashed={dashed}
-                dashScale={dashScale}
-                dashSize={dashSize}
-                gapSize={gapSize}
-            />
+            {points.length > 0 && (
+                <Line
+                    points={points}
+                    color={color}
+                    lineWidth={1}
+                    dashed={dashed}
+                    dashScale={dashScale}
+                    dashSize={dashSize}
+                    gapSize={gapSize}
+                />
+            )}
             
             {/* Invisible tube for hover detection */}
-            <mesh 
-                onPointerMove={selectedManeuver ? undefined : handleTubeHover} 
-                onPointerOut={selectedManeuver ? undefined : handleTubeUnhover}
-                onClick={selectedManeuver ? undefined : handleTubeClick}
-            >
-                <tubeGeometry args={[curve, 200, 5, 8, false]} />
-                <meshBasicMaterial transparent opacity={0} />
-            </mesh>
+            {points.length > 0 && (
+                <mesh 
+                    onPointerMove={selectedManeuver ? undefined : handleTubeHover} 
+                    onPointerOut={selectedManeuver ? undefined : handleTubeUnhover}
+                    onClick={selectedManeuver ? undefined : handleTubeClick}
+                >
+                    <tubeGeometry args={[curve, 200, 5, 8, false]} />
+                    <meshBasicMaterial transparent opacity={0} />
+                </mesh>
+            )}
 
             {/* Hover indicator sphere */}
             {hoverPoint && (
@@ -208,4 +215,4 @@ export function OrbitLine({
             )}
         </group>
     );
-} 
+}
