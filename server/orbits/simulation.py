@@ -17,6 +17,20 @@ def compute_accelerations(bodies):
 
     return accelerations
 
+def apply_maneuver(body: BodyModel, delta_velocity: np.ndarray):
+    """
+    Apply a velocity change (maneuver) to a body.
+    
+    Args:
+        body: The body to apply the maneuver to
+        delta_velocity: The velocity change vector in km/s
+    """
+    current_velocity = body.velocity
+    new_velocity = current_velocity + delta_velocity
+    body.velocity = new_velocity
+    body.save()
+    return body
+
 def nbody_simulation_verlet(bodies, dt, steps, snapshot_interval=20000, save_final=True):
     """
     bodies: list of BodyModel
