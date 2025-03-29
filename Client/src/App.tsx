@@ -115,7 +115,6 @@ function App() {
         
         // Toggle selection if clicking the same body
         if (selectedBody && selectedBody.name === body.name) {
-            console.log("Deselecting body:", body.name);
             setSelectedBody(null);
         } else {
             setSelectedBody(body);
