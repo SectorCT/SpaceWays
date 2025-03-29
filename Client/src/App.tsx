@@ -40,7 +40,7 @@ const moon: CelestialBody = {
     radius: 1737,
     color: "#808080",
     mass: 7.348e22,
-    scale: 1737,
+    scale: 1,
     texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg",
     dayLength: 24,
 }
