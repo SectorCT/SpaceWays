@@ -1,7 +1,7 @@
 import { Canvas } from "@react-three/fiber";
 import { Stars, OrbitControls } from "@react-three/drei";
 import { CelestialBodyComponent } from "./components/CelestialBody";
-import { OrbitLine2 } from "./components/OrbitLine";
+import { OrbitLine2 } from "./components/OrbitLine2";
 import { CelestialBody } from "./types/CelestialBody";
 import { useState, useEffect, useRef } from "react";
 import { InfoPanel } from "./components/InfoPanel";
@@ -264,34 +264,100 @@ function App() {
             setTimeout(() => setShowZoomLevelIndicator(false), 2000);
           }
           break;
-        case "0": // 0 key for ultra-extreme zoom out (system-wide view)
+        case "0": // 0 key for toggling between object view and solar system view
           if (orbitControlsRef.current) {
-            // Get the position of the sun as the center point
-            const sunPosition = getPositionFromOrbit2(
-              sun.orbit,
-              simulationTime.getTime(),
-              simulationStartTime.getTime(),
-            );
+            // Check if we're already zoomed in on an object
+            if (isZoomedIn && zoomedBodyRef.current) {
+              // We're currently zoomed in, so zoom out to solar system view
+              
+              // Get the position of the sun as the center point
+              const sunPosition = getPositionFromOrbit2(
+                sun.orbit,
+                simulationTime.getTime(),
+                simulationStartTime.getTime(),
+              );
+              
+              // Store the current body reference for potential zoom back in
+              const currentZoomBody = zoomedBodyRef.current;
+              
+              // Set target to sun
+              orbitControlsRef.current.target.set(sunPosition.x, sunPosition.y, sunPosition.z);
+              
+              // Calculate a position extremely far out to see the entire system
+              const extremeDistance = sun.radius * sun.scale * 500;
+              
+              // Position camera above the ecliptic plane
+              orbitControlsRef.current.object.position.set(
+                sunPosition.x, 
+                sunPosition.y, 
+                sunPosition.z + extremeDistance
+              );
+              
+              // Update controls
+              orbitControlsRef.current.update();
+              
+              // Update state
+              setIsZoomedIn(false);
+              setZoomLevel("extreme");
+              
+              // Store previous zoom state for toggling back
+              zoomedBodyRef.current = currentZoomBody;
+            } else {
+              // We're zoomed out, check if we have a previous body to zoom to
+              if (zoomedBodyRef.current) {
+                // Zoom back to the previously tracked body
+                // Get the current position of the tracked body
+                const bodyPosition = getPositionFromOrbit2(
+                  zoomedBodyRef.current.orbit,
+                  simulationTime.getTime(),
+                  simulationStartTime.getTime(),
+                );
+                
+                // Set target to the body
+                orbitControlsRef.current.target.set(
+                  bodyPosition.x, 
+                  bodyPosition.y, 
+                  bodyPosition.z
+                );
+                
+                // Calculate ideal distance based on object size
+                const zoomMultiplier = zoomedBodyRef.current.name === "Sun" ? 10 : 3;
+                const idealDistance =
+                  zoomedBodyRef.current.radius *
+                  zoomedBodyRef.current.scale *
+                  zoomMultiplier;
+                
+                // Calculate position above the body
+                orbitControlsRef.current.object.position.set(
+                  bodyPosition.x, 
+                  bodyPosition.y, 
+                  bodyPosition.z + idealDistance
+                );
+                
+                // Update controls
+                orbitControlsRef.current.update();
+                
+                // Update state
+                setIsZoomedIn(true);
+                setZoomLevel("normal");
+                
+                // Start the tracking animation
+                isZoomingRef.current = true;
+                zoomStartTimeRef.current = performance.now();
+              } else if (selectedBody) {
+                // No previous body but we have a selected body, zoom to it
+                zoomedBodyRef.current = selectedBody;
+                setIsZoomedIn(true);
+                
+                // Start the tracking animation
+                isZoomingRef.current = true;
+                zoomStartTimeRef.current = performance.now();
+                
+                setZoomLevel("normal");
+              }
+            }
             
-            // Set target to sun
-            orbitControlsRef.current.target.set(sunPosition.x, sunPosition.y, sunPosition.z);
-            
-            // Calculate a position extremely far out to see the entire system
-            // Use a distance large enough to see the entire solar system
-            const extremeDistance = sun.radius * sun.scale * 500;
-            
-            // Position camera above the ecliptic plane
-            orbitControlsRef.current.object.position.set(
-              sunPosition.x, 
-              sunPosition.y, 
-              sunPosition.z + extremeDistance
-            );
-            
-            // Update controls
-            orbitControlsRef.current.update();
-            
-            // Update UI
-            setZoomLevel("extreme");
+            // Show zoom level indicator briefly
             setShowZoomLevelIndicator(true);
             setTimeout(() => setShowZoomLevelIndicator(false), 2000);
           }
@@ -1140,7 +1206,7 @@ function App() {
         style={{
           position: "absolute",
           bottom: 20,
-          left: 20,
+          right: 20,
           color: "white",
           zIndex: 1000,
           background: "rgba(0,0,0,0.7)",
@@ -1155,7 +1221,7 @@ function App() {
         <div>Mouse Wheel: Zoom in/out</div>
         <div>+ key: Zoom out 10x</div>
         <div>- key: Zoom in 2x</div>
-        <div>0 key: Solar System view</div>
+        <div>0 key: Toggle object/system view</div>
       </div>
 
       {/* UI Elements */}
