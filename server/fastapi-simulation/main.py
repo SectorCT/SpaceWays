@@ -34,7 +34,14 @@ from pydantic import BaseModel, Field
 # Import Django models after Django setup
 try:
     from orbits.models import BodyModel
-    from orbits.simulation import nbody_simulation_verlet, apply_maneuver, TIME_STEP, SIMULATION_STEPS, SNAPSHOT_INTERVAL, simulate_year_in_chunks
+    from orbits.simulation import (
+        nbody_simulation_verlet, 
+        apply_maneuver, 
+        TIME_STEP, 
+        STEPS_PER_QUARTER, 
+        SNAPSHOT_INTERVAL, 
+        simulate_quarters
+    )
     from orbits.utils import date_to_seconds, seconds_to_date, get_trajectory_between_dates
 except ImportError as e:
     print(f"Error importing Django models: {e}")
@@ -108,19 +115,19 @@ def save_bodies(bodies_data: List[NBodyInput]):
 def get_all_bodies():
     return list(BodyModel.objects.all())
 
-@app.post("/simulate_n_bodies/", summary="Simulate N-body system using Velocity Verlet for one year in 3-month chunks", response_model=SimulationResponse)
-async def simulate_n_bodies(bodies_data: List[dict], start_date: str = "2010-01-01"):
+@app.post("/simulate_n_bodies/")
+async def simulate_n_bodies(bodies_data: List[dict]):
     try:
-        # Run the year-long simulation in chunks
-        await sync_to_async(simulate_year_in_chunks)(
-            bodies_data=bodies_data,
-            start_date=start_date
+        # Save bodies to database asynchronously using the raw function
+        body_objs = await save_bodies_raw(bodies_data)
+
+        # Run simulation for multiple quarters
+        trajectories = await sync_to_async(simulate_quarters)(
+            bodies=body_objs,
+            start_time=0.0
         )
 
-        return SimulationResponse(
-            status="success",
-            message="Simulation completed successfully. Data saved to database."
-        )
+        return trajectories
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -257,7 +264,7 @@ async def simulate_solar_system(bodies_data: List[dict]):
         trajectories = await sync_to_async(nbody_simulation_verlet)(
             bodies=body_objs,
             dt=TIME_STEP,  # 60 seconds
-            steps=SIMULATION_STEPS,  # 43829 steps
+            steps=STEPS_PER_QUARTER,  # 90 days worth of steps
             snapshot_interval=SNAPSHOT_INTERVAL,  # 52
             save_final=True
         )

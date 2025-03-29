@@ -10,8 +10,9 @@ G = 6.67430e-20  # km^3/(kg·s^2)
 
 # Simulation constants
 TIME_STEP = 60.0  # seconds
-SIMULATION_STEPS = 525949
-SNAPSHOT_INTERVAL = 100
+QUARTERS_TO_SIMULATE = 4  # number of 3-month periods to simulate
+STEPS_PER_QUARTER = int(90 * 24 * 60 * 60 / TIME_STEP)  # steps for 3 months (90 days)
+SNAPSHOT_INTERVAL = 52
 
 def compute_accelerations(bodies):
     n = len(bodies)
@@ -135,11 +136,11 @@ def get_state_at_time(body: BodyModel, target_time: float) -> tuple:
         
         return interpolated_pos, velocity
 
-def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=SIMULATION_STEPS, snapshot_interval=SNAPSHOT_INTERVAL, save_final=True, start_time=None):
+def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=STEPS_PER_QUARTER, snapshot_interval=SNAPSHOT_INTERVAL, save_final=True, start_time=None):
     """
     bodies: list of BodyModel
     dt: time step in seconds (default: TIME_STEP)
-    steps: number of simulation steps (default: SIMULATION_STEPS)
+    steps: number of simulation steps (default: STEPS_PER_QUARTER)
     snapshot_interval: interval between trajectory snapshots (default: SNAPSHOT_INTERVAL)
     save_final: if True, updates the DB after finishing
     start_time: The time to start the simulation from (in seconds from reference date)
@@ -188,50 +189,48 @@ def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=SIMULATION_STEPS, snapsh
 
     return trajectories 
 
-def simulate_year_in_chunks(bodies_data, start_date="2010-01-01"):
+def simulate_quarters(bodies, start_time=0.0):
     """
-    Simulate a full year in 3-month chunks, starting from a given date.
+    Simulate multiple quarters (3-month periods) in sequence.
+    Each quarter starts from the end state of the previous quarter.
     
     Args:
-        bodies_data: List of dictionaries containing body data
-        start_date: Starting date in YYYY-MM-DD format
+        bodies: list of BodyModel objects
+        start_time: starting time in seconds
+    
+    Returns:
+        dict: Combined trajectories from all quarters
     """
-
+    all_trajectories = {}
+    current_time = start_time
     
-    # Convert start date to seconds
-    start_seconds = date_to_seconds(start_date)
-    
-    # Calculate number of steps for 3 months (90 days)
-    steps_per_quarter = int(90 * 24 * 60 * 60 / TIME_STEP)  # 90 days in seconds / time step
+    # Initialize trajectories
+    for body in bodies:
+        all_trajectories[body.name] = {}
     
     # Run simulation for each quarter
-    for quarter in range(1):
-        quarter_start = start_seconds + (quarter * 90 * 24 * 60 * 60)
-        
-        # Save initial bodies data
-        body_objs = []
-        for b in bodies_data:
-            body_model = BodyModel.objects.filter(name=b["name"]).first()
-            if body_model is None:
-                body_model = BodyModel(name=b["name"])
-            
-            body_model.mass = b["mass"]
-            body_model.position = b["position"]
-            body_model.velocity = b["velocity"]
-            body_model.save()
-            body_objs.append(body_model)
-        
-        # Run simulation for this quarter
+    for quarter in range(QUARTERS_TO_SIMULATE):
         trajectories = nbody_simulation_verlet(
-            bodies=body_objs,
-            steps=steps_per_quarter,
-            start_time=quarter_start,
-            save_final=True
+            bodies=bodies,
+            dt=TIME_STEP,
+            steps=STEPS_PER_QUARTER,
+            snapshot_interval=SNAPSHOT_INTERVAL,
+            save_final=True,
+            start_time=current_time
         )
         
-        # Update bodies_data with final positions and velocities for next quarter
-        for i, body in enumerate(body_objs):
-            bodies_data[i]["position"] = body.position.tolist()
-            bodies_data[i]["velocity"] = body.velocity.tolist()
+        # Merge trajectories
+        for body_name, body_traj in trajectories.items():
+            all_trajectories[body_name].update(body_traj)
+        
+        # Update current_time to the last timestamp
+        if trajectories and any(trajectories.values()):
+            # Get the maximum timestamp from any body's trajectory
+            max_time = max(
+                max(float(t) for t in body_traj.keys())
+                for body_traj in trajectories.values()
+                if body_traj
+            )
+            current_time = max_time
     
-    return trajectories 
+    return all_trajectories 
