@@ -223,7 +223,6 @@ export function ManeuverNode({
 
   const createPuller = (
     direction: Direction,
-    position: [number, number, number],
     rotation: [number, number, number] = [0, 0, 0],
   ) => {
     const handlePos = handlePositions[direction];
@@ -285,12 +284,10 @@ export function ManeuverNode({
           {/* Prograde/Retrograde handles */}
           {createPuller(
             "prograde",
-            [0, 0, baseHandleLength],
             [Math.PI / 2, 0, 0],
           )}
           {createPuller(
             "retrograde",
-            [0, 0, -baseHandleLength],
             [Math.PI / 2, 0, 0],
           )}
 
@@ -301,12 +298,10 @@ export function ManeuverNode({
           {/* Radial handles */}
           {createPuller(
             "radialIn",
-            [-baseHandleLength, 0, 0],
             [0, 0, Math.PI / 2],
           )}
           {createPuller(
             "radialOut",
-            [baseHandleLength, 0, 0],
             [0, 0, Math.PI / 2],
           )}
         </>

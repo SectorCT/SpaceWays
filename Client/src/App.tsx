@@ -43,6 +43,9 @@ const bodies = planetData.map((planet) => {
   };
 });
 
+// Create references to all needed bodies
+const sun = bodies.find((body) => body.name === "Sun")!;
+const earth = bodies.find((body) => body.name === "Earth")!;
 
 const spaceship: CelestialBody = {
   name: "Spaceship",
@@ -53,13 +56,6 @@ const spaceship: CelestialBody = {
   scale: 0.1,
   dayLength: 24,
 };
-
-//this will always exist
-const earth = bodies.find((body) => body.name === "Earth")!;
-
-//this will always exist
-const sun = bodies.find((body) => body.name === "Sun")!;
-
 
 function App() {
   const [simulationTime, setSimulationTime] = useState<Date>(new Date());
