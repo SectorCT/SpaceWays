@@ -544,15 +544,13 @@ function App() {
                     }}
                 >
                     {/* Background stars - positioned far behind everything */}
-                    {/* <Stars 
+                    <Stars 
                         radius={6000000} 
                         depth={50} 
-                        count={500000} 
+                        count={50000} 
                         factor={6} 
                         saturation={1} 
-                        fade 
-                        speed={1}
-                    /> */}
+                    />
 
           {/* Celestial bodies */}
           <CelestialBodyComponent
