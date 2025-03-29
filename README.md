@@ -6,6 +6,26 @@ Space Waze is an accessible, learner-friendly 3D space simulator, that allows us
 
 # Frontend
 
+The frontend is built with React and TypeScript, providing a modern and responsive user interface for space simulation visualization. Key features include:
+
+1. 3D Visualization:
+   - Interactive 3D scene using Three.js
+   - Real-time orbit visualization
+   - Camera controls for exploring the simulation
+   - Object selection and information display
+
+2. User Interface:
+   - Clean, intuitive design
+   - Real-time simulation controls
+   - Object property editors
+   - Trajectory visualization options
+
+3. Technologies:
+   - React with TypeScript for type safety
+   - Three.js for 3D rendering
+   - Vite for fast development and building
+   - Jest for testing
+
 # Backend
 
 1. Algorithm:
@@ -24,3 +44,42 @@ Space Waze is an accessible, learner-friendly 3D space simulator, that allows us
 3. Frameworks:
    - We use Django to connect to the database
    - We use FastAPI to create endpoints and quickly adress requests from the frontend. 
+
+## Running with Docker
+
+The project uses Docker Compose to manage multiple services. Here's how to run it:
+
+1. Prerequisites:
+   - Docker installed on your system
+   - Docker Compose installed on your system
+
+2. Starting the Services:
+   ```bash
+   cd server
+   docker-compose up --build
+   ```
+   This will start:
+   - PostgreSQL database on port 5432
+   - Django backend on port 8000
+   - FastAPI simulation service on port 8001
+
+3. Frontend Development:
+   ```bash
+   cd Client
+   npm install
+   npm run dev
+   ```
+   The frontend will be available at http://localhost:5173
+
+4. Environment Variables:
+   The following environment variables are used in the Docker setup:
+   - `DB_NAME`: myprojectdb
+   - `DB_USER`: myprojectuser
+   - `DB_PASSWORD`: yourpassword
+   - `DB_HOST`: db
+   - `DB_PORT`: 5432
+
+5. Stopping the Services:
+   ```bash
+   docker-compose down
+   ```

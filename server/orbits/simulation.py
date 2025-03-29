@@ -2,12 +2,16 @@ import numpy as np
 from .models import BodyModel
 import json
 
+from datetime import datetime, timedelta
+from .utils import date_to_seconds
+
 # Physical constants
 G = 6.67430e-20  # km^3/(kg·s^2)
 
 # Simulation constants
 TIME_STEP = 60.0  # seconds
-SIMULATION_STEPS = 1000
+QUARTERS_TO_SIMULATE = 4  # number of 3-month periods to simulate
+STEPS_PER_QUARTER = int(90 * 24 * 60 * 60 / TIME_STEP)  # steps for 3 months (90 days)
 SNAPSHOT_INTERVAL = 52
 
 def compute_accelerations(bodies):
@@ -78,14 +82,68 @@ def apply_maneuver(body: BodyModel, delta_velocity: np.ndarray, simulation_time:
     body.save()
     return body
 
-def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=SIMULATION_STEPS, snapshot_interval=SNAPSHOT_INTERVAL, save_final=True, start_time=None):
+def get_state_at_time(body: BodyModel, target_time: float) -> tuple:
+    """
+    Get the state (position and velocity) of a body at a specific time.
+    If the exact time is not found, interpolate between the closest available states.
+    
+    Args:
+        body: The body to get state for
+        target_time: The time to get state at (in seconds from reference date)
+        
+    Returns:
+        tuple: (position, velocity) at the target time
+    """
+    if not body.trajectory_json:
+        return body.position, body.velocity
+        
+    trajectory = json.loads(body.trajectory_json)
+    if not trajectory:
+        return body.position, body.velocity
+        
+    # Convert all timestamps to floats and sort them
+    times = sorted(float(t) for t in trajectory.keys())
+    
+    # Find the closest times before and after target_time
+    before_time = None
+    after_time = None
+    for t in times:
+        if t <= target_time:
+            before_time = t
+        else:
+            after_time = t
+            break
+    
+    if before_time is None:
+        # Target time is before first recorded state
+        first_time = times[0]
+        return np.array(trajectory[str(first_time)]), body.velocity
+    elif after_time is None:
+        # Target time is after last recorded state
+        last_time = times[-1]
+        return np.array(trajectory[str(last_time)]), body.velocity
+    else:
+        # Interpolate between states
+        before_pos = np.array(trajectory[str(before_time)])
+        after_pos = np.array(trajectory[str(after_time)])
+        
+        # Linear interpolation
+        alpha = (target_time - before_time) / (after_time - before_time)
+        interpolated_pos = before_pos + alpha * (after_pos - before_pos)
+        
+        # Estimate velocity from the two positions
+        velocity = (after_pos - before_pos) / (after_time - before_time)
+        
+        return interpolated_pos, velocity
+
+def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=STEPS_PER_QUARTER, snapshot_interval=SNAPSHOT_INTERVAL, save_final=True, start_time=None):
     """
     bodies: list of BodyModel
     dt: time step in seconds (default: TIME_STEP)
-    steps: number of simulation steps (default: SIMULATION_STEPS)
+    steps: number of simulation steps (default: STEPS_PER_QUARTER)
     snapshot_interval: interval between trajectory snapshots (default: SNAPSHOT_INTERVAL)
     save_final: if True, updates the DB after finishing
-    start_time: The time to start the simulation from (if None, use current state)
+    start_time: The time to start the simulation from (in seconds from reference date)
     """
     current_time = start_time if start_time is not None else 0.0
 
@@ -96,6 +154,14 @@ def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=SIMULATION_STEPS, snapsh
             trajectories[body.name] = json.loads(body.trajectory_json)
         else:
             trajectories[body.name] = {f"{current_time}": body.position.tolist()}
+
+    # If start_time is provided, get the state at that time for each body
+    if start_time is not None:
+        for body in bodies:
+            position, velocity = get_state_at_time(body, start_time)
+            body.position = position
+            body.velocity = velocity
+            body.save()
 
     accelerations = compute_accelerations(bodies)
 
@@ -122,3 +188,49 @@ def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=SIMULATION_STEPS, snapsh
             body.save()
 
     return trajectories 
+
+def simulate_quarters(bodies, start_time=0.0):
+    """
+    Simulate multiple quarters (3-month periods) in sequence.
+    Each quarter starts from the end state of the previous quarter.
+    
+    Args:
+        bodies: list of BodyModel objects
+        start_time: starting time in seconds
+    
+    Returns:
+        dict: Combined trajectories from all quarters
+    """
+    all_trajectories = {}
+    current_time = start_time
+    
+    # Initialize trajectories
+    for body in bodies:
+        all_trajectories[body.name] = {}
+    
+    # Run simulation for each quarter
+    for quarter in range(QUARTERS_TO_SIMULATE):
+        trajectories = nbody_simulation_verlet(
+            bodies=bodies,
+            dt=TIME_STEP,
+            steps=STEPS_PER_QUARTER,
+            snapshot_interval=SNAPSHOT_INTERVAL,
+            save_final=True,
+            start_time=current_time
+        )
+        
+        # Merge trajectories
+        for body_name, body_traj in trajectories.items():
+            all_trajectories[body_name].update(body_traj)
+        
+        # Update current_time to the last timestamp
+        if trajectories and any(trajectories.values()):
+            # Get the maximum timestamp from any body's trajectory
+            max_time = max(
+                max(float(t) for t in body_traj.keys())
+                for body_traj in trajectories.values()
+                if body_traj
+            )
+            current_time = max_time
+    
+    return all_trajectories 

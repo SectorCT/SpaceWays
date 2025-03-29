@@ -386,21 +386,40 @@ function App() {
   // Save the initial camera position and target
   useEffect(() => {
     if (orbitControlsRef.current && !initialCameraPositionRef.current) {
-      // Store the initial camera position and target as reference points for zooming
-      initialCameraPositionRef.current = new Vector3(0, 0, ZOOM_OUT_DISTANCE);
-      initialTargetRef.current = new Vector3(0, 0, 0);
+      // Get Earth's initial position
+      const earthPosition = getPositionFromOrbit2(
+        earth.orbit,
+        simulationTime.getTime(),
+        simulationStartTime.getTime(),
+      );
+      
+      // Calculate zoom out distance as 13x Earth's radius
+      const zoomOutDistance = earth.radius * earth.scale * 13;
+      
+      // Set initial camera position above Earth
+      initialCameraPositionRef.current = new Vector3(
+        earthPosition.x,
+        earthPosition.y,
+        earthPosition.z + zoomOutDistance
+      );
+      
+      // Set initial target to Earth's position
+      initialTargetRef.current = new Vector3(
+        earthPosition.x,
+        earthPosition.y,
+        earthPosition.z
+      );
 
       // Set the camera to this initial position
-      orbitControlsRef.current.object.position.copy(
-        initialCameraPositionRef.current,
-      );
+      orbitControlsRef.current.object.position.copy(initialCameraPositionRef.current);
       orbitControlsRef.current.target.copy(initialTargetRef.current);
       orbitControlsRef.current.update();
 
-      console.log(
-        "Set wider initial camera position:",
-        initialCameraPositionRef.current,
-      );
+      // Set initial zoom state to zoomed out
+      setIsZoomedIn(false);
+      zoomedBodyRef.current = null;
+
+      console.log("Set initial camera position to Earth:", initialCameraPositionRef.current);
     }
   }, [orbitControlsRef.current]);
 
@@ -458,10 +477,13 @@ function App() {
             selectedBody && selectedBody.name === zoomedBodyRef.current.name
               ? 7
               : 10;
+          
+          // Use a larger multiplier for the Sun to ensure we're outside it
+          const zoomMultiplier = zoomedBodyRef.current.name === "Sun" ? 10 : 3;
           const idealDistance =
             zoomedBodyRef.current.radius *
             zoomedBodyRef.current.scale *
-            pulseZoomFactor;
+            zoomMultiplier;
 
           // Get the direction vector from camera to the target
           const camera = orbitControlsRef.current.object;
@@ -485,13 +507,27 @@ function App() {
           initialCameraPositionRef.current &&
           initialTargetRef.current
         ) {
-          // Zooming out - maintain camera direction while increasing distance
+          // Get Earth's current position
+          const earthPosition = getPositionFromOrbit2(
+            earth.orbit,
+            simulationTime.getTime(),
+            simulationStartTime.getTime(),
+          );
+          
+          // Calculate zoom out distance as 13x Earth's radius
+          const zoomOutDistance = earth.radius * earth.scale * 13;
+          
+          // Get current camera position and target
           const currentPos = orbitControlsRef.current.object.position;
           const currentTarget = orbitControlsRef.current.target;
+          const direction = new Vector3(0, 0, 1); // Point towards positive Z
 
-          // Get current direction but use it with the fixed zoom out distance
-          const direction = currentPos.clone().sub(currentTarget).normalize();
-          const targetPosition = direction.multiplyScalar(ZOOM_OUT_DISTANCE);
+          // Calculate target position relative to Earth
+          const targetPosition = new Vector3(
+            earthPosition.x,
+            earthPosition.y,
+            earthPosition.z + zoomOutDistance
+          );
 
           // Lerp the camera position
           orbitControlsRef.current.object.position.lerpVectors(
@@ -500,10 +536,10 @@ function App() {
             easedProgress,
           );
 
-          // Smoothly move target back to center
+          // Smoothly move target to Earth's position
           orbitControlsRef.current.target.lerpVectors(
             currentTarget,
-            new Vector3(0, 0, 0),
+            new Vector3(earthPosition.x, earthPosition.y, earthPosition.z),
             easedProgress,
           );
         }
@@ -609,7 +645,7 @@ function App() {
                         position: [0, 0, sun.radius * sun.scale * 10], 
                         fov: 45,
                         near: 1,
-                        far: 100000000000,
+                        far: 10000000000000,
                         frustumCulled: false
                     }}
                     
@@ -622,11 +658,13 @@ function App() {
                 >
                     {/* Background stars - positioned far behind everything */}
                     <Stars 
-                        radius={6000000} 
+                        radius={600000000} 
                         depth={50} 
                         count={50000} 
                         factor={6} 
                         saturation={1} 
+                        fade={false}
+                        speed={1}
                     />
 
           {/* Celestial bodies */}
