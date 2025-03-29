@@ -4,9 +4,56 @@ import { CelestialBodyComponent } from "./components/CelestialBody";
 import { OrbitLine } from "./components/OrbitLine";
 import { CelestialBody } from "./types/CelestialBody";
 import { Orbit } from "./types/orbit";
+import { useState, useEffect, useRef } from "react";
+import { InfoPanel } from "./components/InfoPanel";
+import { PromptMenu } from "./components/PromptMenu";
+import { ManeuverNode } from "./components/ManeuverNode";
+import { Vector3 } from "three";
+import { DateSelector } from "./components/DateSelector";
 import "./App.css";
 
-// Create Earth celestial body
+interface PromptButton {
+    label: string;
+    onClick: () => Vector3 | void;
+}
+
+interface PromptState {
+    isOpen: boolean;
+    position: { x: number; y: number };
+    buttons: PromptButton[];
+}
+
+interface ManeuverNodeData {
+    id: string;
+    position: Vector3;
+    deltaV: Vector3;
+}
+
+const exampleOrbit: Orbit = {
+  name: "Example Orbit",
+  semi_major_axis: 100, // Scaled down for visualization
+  eccentricity: 0.2,
+  inclination: 30,
+  raan: 0,
+  arg_periapsis: 0,
+  true_anomaly: 0,
+  apoapsis: 120,
+  periapsis: 80,
+  orbital_period: 86400,
+  mean_motion: 0.0000729,
+  epoch: new Date().toISOString(),
+};
+
+const moon: CelestialBody = {
+  name: "Moon",
+  orbit: exampleOrbit,
+  radius: 1737,
+  color: "#808080",
+  mass: 7.348e22,
+  scale: 0.005,
+  texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg"
+}
+
 const earth: CelestialBody = {
   name: "Earth",
   orbit: {
@@ -24,124 +71,356 @@ const earth: CelestialBody = {
     epoch: new Date().toISOString(),
   },
   radius: 6371, // Earth's radius in km
-  color: "#4287f5", // Blue color for Earth
+  color: "#4287f5", // Fallback color if texture fails to load
   mass: 5.972e24, // Earth's mass in kg
   scale: 0.01, // Increased scale for better visibility
-};
-
-// Create an example orbit for visualization
-const exampleOrbit: Orbit = {
-  name: "Example Orbit",
-  semi_major_axis: 100, // Scaled down for visualization
-  eccentricity: 0.2,
-  inclination: 30,
-  raan: 0,
-  arg_periapsis: 0,
-  true_anomaly: 0,
-  apoapsis: 120,
-  periapsis: 80,
-  orbital_period: 86400,
-  mean_motion: 0.0000729,
-  epoch: new Date().toISOString(),
-};
-
-// Create a second wider orbit
-const secondOrbit: Orbit = {
-  name: "Second Orbit",
-  semi_major_axis: 150, // Wider than the first orbit
-  eccentricity: 0.1, // Less eccentric
-  inclination: 45, // Different inclination
-  raan: 45, // Different RAAN
-  arg_periapsis: 30, // Different argument of periapsis
-  true_anomaly: 0,
-  apoapsis: 165,
-  periapsis: 135,
-  orbital_period: 86400,
-  mean_motion: 0.0000729,
-  epoch: new Date().toISOString(),
+  texture:
+    "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg", // Earth texture from Three.js repository
 };
 
 function App() {
-  return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        background: "#000",
-        position: "relative",
-      }}
-    >
-      {/* Background stars */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-        }}
-      >
-        <Canvas>
-          <Stars
-            radius={100}
-            depth={50}
-            count={5000}
-            factor={4}
-            saturation={0}
-            fade
-            speed={1}
-          />
-        </Canvas>
-      </div>
+    const [simulationTime, setSimulationTime] = useState<Date>(new Date());
+    const [timeSpeed, setTimeSpeed] = useState(1); // 1 = real time, 2 = 2x speed, etc.
+    const [isPaused, setIsPaused] = useState(false);
+    const [selectedBody, setSelectedBody] = useState<CelestialBody | null>(null);
+    const [selectedManeuver, setSelectedManeuver] = useState<string | null>(null);
+    const [prompt, setPrompt] = useState<PromptState>({
+        isOpen: false,
+        position: { x: 0, y: 0 },
+        buttons: []
+    });
+    const [maneuverNodes, setManeuverNodes] = useState<ManeuverNodeData[]>([]);
+    const [currentManeuverVector, setCurrentManeuverVector] = useState<Vector3>(new Vector3(0, 0, 0));
+    const [isDraggingHandle, setIsDraggingHandle] = useState(false);
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const timeControlsRef = useRef<HTMLDivElement>(null);
 
-      {/* Interactive scene */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-        }}
-      >
-        <Canvas camera={{ position: [150, 150, 150], fov: 45 }}>
-          {/* Main ambient light for overall scene illumination */}
-          <ambientLight intensity={0.3} />
+    useEffect(() => {
+        let lastTime = Date.now();
+        const interval = setInterval(() => {
+            if (!isPaused) {
+                const currentTime = Date.now();
+                const deltaMs = (currentTime - lastTime) * timeSpeed;
+                setSimulationTime(prevTime => new Date(prevTime.getTime() + deltaMs));
+                lastTime = currentTime;
+            }
+        }, 16); // ~60fps
 
-          {/* Main directional light (simulating sunlight) */}
-          <directionalLight
-            position={[100, 100, 100]}
-            intensity={1}
-            castShadow={true}
-          />
+        return () => clearInterval(interval);
+    }, [timeSpeed, isPaused]);
 
-          {/* Secondary fill light to reduce harsh shadows */}
-          <pointLight
-            position={[-50, -50, -50]}
-            intensity={0.5}
-            color="#ffffff"
-          />
+    // Add keyboard controls for pause, speed up, and slow down
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Skip if user is typing in an input field
+            if (e.target instanceof HTMLInputElement || 
+                e.target instanceof HTMLTextAreaElement ||
+                e.target instanceof HTMLSelectElement) {
+                return;
+            }
+            
+            switch (e.key) {
+                case ' ': // Space bar for pause/resume
+                    setIsPaused(prevPaused => !prevPaused);
+                    break;
+                case '>': // > for speed up
+                case '.': // Also allow period key (unshifted >)
+                    handleSpeedChange(timeSpeed * 2);
+                    break;
+                case '<': // < for slow down
+                case ',': // Also allow comma key (unshifted <)
+                    handleSpeedChange(Math.max(1, timeSpeed / 2));
+                    break;
+            }
+        };
 
-          {/* Rim light to create edge highlights */}
-          <pointLight position={[0, 0, 100]} intensity={0.3} color="#ffffff" />
+        window.addEventListener('keydown', handleKeyDown);
+        
+        // Clean up event listener
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [timeSpeed]); // Only re-add listener if timeSpeed changes
 
-          <CelestialBodyComponent body={earth} />
-          <OrbitLine orbit={exampleOrbit} color="#00ff00" />
-          <OrbitLine orbit={secondOrbit} color="#ff00ff" dashed={true} />
-          <OrbitControls
-            enableDamping={true}
-            dampingFactor={0.05}
-            minDistance={50}
-            maxDistance={600}
-            target={[0, 0, 0]}
-            enablePan={true}
-            enableZoom={true}
-            enableRotate={true}
-          />
-        </Canvas>
-      </div>
-    </div>
-  );
+    // Handle screen edges for date picker
+    useEffect(() => {
+        if (isDatePickerOpen && timeControlsRef.current) {
+            const rect = timeControlsRef.current.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            // Check if date picker would go off screen
+            if (rect.left + 400 > viewportWidth) {
+                timeControlsRef.current.classList.add('date-picker-right-aligned');
+            } else {
+                timeControlsRef.current.classList.remove('date-picker-right-aligned');
+            }
+            
+            if (rect.bottom + 400 > viewportHeight) {
+                timeControlsRef.current.classList.add('date-picker-top-aligned');
+            } else {
+                timeControlsRef.current.classList.remove('date-picker-top-aligned');
+            }
+        }
+    }, [isDatePickerOpen]);
+
+    const handleSpeedChange = (speed: number) => {
+        setTimeSpeed(speed);
+    };
+
+    const handleSelectBody = (body: CelestialBody) => {
+        console.log("Selected body:", body.name);
+        
+        // Toggle selection if clicking the same body
+        if (selectedBody && selectedBody.name === body.name) {
+            setSelectedBody(null);
+        } else {
+            setSelectedBody(body);
+        }
+    };
+
+    const handleCloseInfoPanel = () => {
+        setSelectedBody(null);
+    };
+
+    const handleOrbitClick = (event: MouseEvent, buttons: PromptButton[]) => {
+        console.log("Orbit clicked");
+        event.preventDefault();
+        
+        // Get the hover point from the button's onClick return value
+        const createManeuverButton = buttons.find(b => b.label === "Create Maneuver Node");
+        if (createManeuverButton) {
+            const hoverPoint = createManeuverButton.onClick();
+            if (hoverPoint instanceof Vector3) {
+                const newDeltaV = new Vector3(0, 0, 0);
+                // Create new node with zero deltaV
+                const newNode: ManeuverNodeData = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    position: hoverPoint,
+                    deltaV: newDeltaV.clone()
+                };
+                setManeuverNodes([newNode]); // Replace array instead of adding to it
+                setCurrentManeuverVector(newDeltaV);
+                setSelectedManeuver(null); // Deselect any existing node
+                closePrompt();
+            }
+        } else {
+            setPrompt({
+                isOpen: true,
+                position: { x: event.clientX, y: event.clientY },
+                buttons
+            });
+        }
+    };
+
+    const closePrompt = () => {
+        setPrompt(prev => ({ ...prev, isOpen: false }));
+    };
+
+    const handleManeuverUpdate = (id: string, deltaV: Vector3, isDragging: boolean) => {
+        setIsDraggingHandle(isDragging);
+        
+        // Update the maneuver nodes first
+        setManeuverNodes(prev => prev.map(node => 
+            node.id === id ? { ...node, deltaV: deltaV.clone() } : node
+        ));
+
+        // Always update currentManeuverVector to show the active node's deltaV
+        setCurrentManeuverVector(deltaV.clone());
+    };
+
+    const handleManeuverSelect = (id: string) => {
+        console.log("Selecting maneuver:", id);
+        setSelectedManeuver(prev => {
+            const newSelection = prev === id ? null : id;
+            console.log("New selection:", newSelection);
+            return newSelection;
+        });
+    };
+    // Handle setting a specific date
+    const handleSetDate = (newDate: Date) => {
+        setSimulationTime(newDate);
+        setIsDatePickerOpen(false);
+        // Pause simulation when a specific date is set
+        setIsPaused(true);
+    };
+
+    // Handle showing/hiding the date picker
+    const toggleDatePicker = () => {
+        setIsDatePickerOpen(!isDatePickerOpen);
+    };
+
+    return (
+        <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
+            {/* Single Canvas for all 3D content */}
+            <div style={{ width: '100%', height: '100%' }}>
+                <Canvas 
+                    camera={{ position: [0, 0, 100], fov: 45 }}
+                    onPointerMissed={() => {
+                        if (selectedBody) {
+                            setSelectedBody(null);
+                        }
+                        if (selectedManeuver) {
+                            setSelectedManeuver(null);
+                        }
+                    }}
+                >
+                    {/* Background stars - positioned far behind everything */}
+                    <Stars 
+                        radius={300} 
+                        depth={50} 
+                        count={5000} 
+                        factor={4} 
+                        saturation={0} 
+                        fade 
+                        speed={1}
+                    />
+                    
+                    {/* Celestial bodies */}
+                    <CelestialBodyComponent 
+                        body={earth} 
+                        currentTime={simulationTime} 
+                        isSelected={selectedBody?.name === earth.name}
+                        onSelect={handleSelectBody}
+                    />
+                    <CelestialBodyComponent 
+                        body={moon} 
+                        currentTime={simulationTime} 
+                        isSelected={selectedBody?.name === moon.name}
+                        onSelect={handleSelectBody}
+                    />
+                    
+                    {/* Orbit lines */}
+                    <OrbitLine 
+                        orbit={exampleOrbit} 
+                        color="#00ff00" 
+                        onOrbitClick={handleOrbitClick}
+                        maneuverNodes={maneuverNodes}
+                        selectedManeuver={selectedManeuver}
+                    />
+                    
+                    {/* Render all maneuver nodes */}
+                    {maneuverNodes.map(node => (
+                        <ManeuverNode
+                            key={node.id}
+                            id={node.id}
+                            position={node.position}
+                            deltaV={node.deltaV}
+                            scale={2}
+                            onUpdate={handleManeuverUpdate}
+                            setIsDragging={setIsDraggingHandle}
+                            isSelected={selectedManeuver === node.id}
+                            onSelect={handleManeuverSelect}
+                        />
+                    ))}
+                    
+                    {/* Controls */}
+                    <OrbitControls 
+                        enablePan={!isDraggingHandle && !selectedManeuver}
+                        enableZoom={!isDraggingHandle && !selectedManeuver}
+                        enableRotate={!isDraggingHandle && !selectedManeuver}
+                        enabled={!isDraggingHandle && !selectedManeuver}
+                    />
+                </Canvas>
+            </div>
+
+            {/* Time controls with new stylish UI */}
+            <div className="time-controls" ref={timeControlsRef}>
+                <div className="time-label">Simulation Time</div>
+                <div className="time-value">{simulationTime.toLocaleString()}</div>
+                
+                <div className="speed-display">
+                    <span className="speed-label">Speed:</span>
+                    <span className="speed-value">{timeSpeed}x</span>
+                </div>
+                
+                <div className="controls-row">
+                    <button 
+                        className={`time-button pause-button ${isPaused ? 'paused' : ''}`}
+                        onClick={() => setIsPaused(!isPaused)}
+                        title="Press Space to pause/resume"
+                    >
+                        {isPaused ? 'Resume' : 'Pause'}
+                    </button>
+                </div>
+                
+                <div className="controls-row" style={{ marginTop: '8px' }}>
+                    <button 
+                        className="time-button speed-button slower"
+                        onClick={() => handleSpeedChange(Math.max(1, timeSpeed / 2))}
+                        title="Press < to slow down"
+                    >
+                        <span className="speed-icon">←</span> Slower
+                    </button>
+                    <div style={{ width: '10px' }}></div>
+                    <button 
+                        className="time-button speed-button faster"
+                        onClick={() => handleSpeedChange(timeSpeed * 2)}
+                        title="Press > to speed up"
+                    >
+                        Faster <span className="speed-icon">→</span>
+                    </button>
+                </div>
+                
+                <div className="keyboard-shortcuts">
+                    Keyboard: Space = pause, &lt; = slower, &gt; = faster
+                </div>
+                
+                <div className="controls-row" style={{ marginTop: '12px' }}>
+                    <button 
+                        className="time-button date-button"
+                        onClick={toggleDatePicker}
+                    >
+                        Set Specific Date
+                    </button>
+                </div>
+                
+                {isDatePickerOpen && (
+                    <DateSelector 
+                        currentDate={simulationTime}
+                        onSetDate={handleSetDate}
+                        onClose={() => setIsDatePickerOpen(false)}
+                    />
+                )}
+            </div>
+
+            {/* Debug info */}
+            <div style={{ 
+                position: 'absolute', 
+                top: 20, 
+                left: '50%',
+                transform: 'translateX(-50%)',
+                color: 'white',
+                zIndex: 1000,
+                background: 'rgba(0,0,0,0.7)',
+                padding: '10px',
+                borderRadius: '5px',
+                fontFamily: 'monospace',
+                fontSize: '14px',
+                textAlign: 'center'
+            }}>
+                ΔV: {currentManeuverVector ? 
+                    `X: ${currentManeuverVector.x.toFixed(2)} Y: ${currentManeuverVector.y.toFixed(2)} Z: ${currentManeuverVector.z.toFixed(2)} m/s` 
+                    : 'No maneuver'}
+                <br />
+                Magnitude: {currentManeuverVector ? currentManeuverVector.length().toFixed(2) + ' m/s' : '0 m/s'}
+            </div>
+
+            {/* Info panel */}
+            <InfoPanel 
+                selectedBody={selectedBody} 
+                onClose={handleCloseInfoPanel} 
+            />
+
+            {/* Orbit Action Prompt */}
+            <PromptMenu
+                isOpen={prompt.isOpen}
+                position={prompt.position}
+                buttons={prompt.buttons}
+                onClose={closePrompt}
+            />
+        </div>
+    );
 }
 
 export default App;
