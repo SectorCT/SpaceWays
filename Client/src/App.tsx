@@ -125,6 +125,7 @@ function App() {
                 const deltaMs = (currentTime - lastTime) * timeSpeed;
                 setSimulationTime(prevTime => new Date(prevTime.getTime() + deltaMs));
                 lastTime = currentTime;
+                
             }
         }, 16); // ~60fps
 
@@ -626,10 +627,10 @@ function App() {
                         minDistance={1}
                         maxDistance={2000}
                         zoomSpeed={1.0}
-                        rotateSpeed={0.8}
+                        rotateSpeed={0.3}
                         panSpeed={0.8}
                         dampingFactor={0.1}
-                        autoRotate={true}
+                        autoRotate={!isPaused}
                     />
                 </Canvas>
             </div>
