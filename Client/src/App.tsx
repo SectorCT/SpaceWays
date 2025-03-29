@@ -10,6 +10,8 @@ import { PromptMenu } from "./components/PromptMenu";
 import { ManeuverNode } from "./components/ManeuverNode";
 import { Vector3 } from "three";
 import { DateSelector } from "./components/DateSelector";
+import { ZoomButton } from "./components/ZoomButton";
+import { getOrbitalPosition } from "./getPositionFromOrbit";
 import "./App.css";
 
 interface PromptButton {
@@ -78,6 +80,8 @@ const earth: CelestialBody = {
     "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg", // Earth texture from Three.js repository
 };
 
+const ZOOM_OUT_DISTANCE = 500; // Fixed zoom out distance
+
 function App() {
     const [simulationTime, setSimulationTime] = useState<Date>(new Date());
     const [timeSpeed, setTimeSpeed] = useState(1); // 1 = real time, 2 = 2x speed, etc.
@@ -93,7 +97,25 @@ function App() {
     const [currentManeuverVector, setCurrentManeuverVector] = useState<Vector3>(new Vector3(0, 0, 0));
     const [isDraggingHandle, setIsDraggingHandle] = useState(false);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const [showZoomIndicator, setShowZoomIndicator] = useState(false);
+    const [isZoomedIn, setIsZoomedIn] = useState(false);
+    const [zoomIndicatorStyle, setZoomIndicatorStyle] = useState({
+        left: 0,
+        top: 0,
+        width: 0,
+        height: 0
+    });
+    const [zoomLevel, setZoomLevel] = useState<'normal' | 'wide' | 'extreme'>('normal');
+    const [showZoomLevelIndicator, setShowZoomLevelIndicator] = useState(false);
+    
     const timeControlsRef = useRef<HTMLDivElement>(null);
+    const orbitControlsRef = useRef<any>(null);
+    const initialCameraPositionRef = useRef<Vector3 | null>(null);
+    const initialTargetRef = useRef<Vector3 | null>(null);
+    const zoomTargetRef = useRef<Vector3 | null>(null);
+    const isZoomingRef = useRef(false);
+    const zoomStartTimeRef = useRef<number>(0);
+    const zoomedBodyRef = useRef<CelestialBody | null>(null);
 
     useEffect(() => {
         let lastTime = Date.now();
@@ -171,10 +193,55 @@ function App() {
     const handleSelectBody = (body: CelestialBody) => {
         console.log("Selected body:", body.name);
         
-        // Toggle selection if clicking the same body
+        // If clicking the same body that's already selected
         if (selectedBody && selectedBody.name === body.name) {
-            setSelectedBody(null);
+            // Create pulse effect - zoom in briefly then out
+            zoomedBodyRef.current = body;
+            isZoomingRef.current = true;
+            zoomStartTimeRef.current = performance.now();
+            setIsZoomedIn(true);
+
+            // Create zoom in indicator
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            setZoomIndicatorStyle({
+                left: windowWidth / 2 - 50,
+                top: windowHeight / 2 - 50,
+                width: 100,
+                height: 100
+            });
+            
+            setShowZoomIndicator(true);
+
+            // After 1 second, zoom back out
+            setTimeout(() => {
+                // Start zoom out
+                setIsZoomedIn(false);
+                isZoomingRef.current = true;
+                zoomStartTimeRef.current = performance.now();
+                
+                // Store current camera direction before zoom out
+                if (orbitControlsRef.current) {
+                    const currentPos = orbitControlsRef.current.object.position.clone();
+                    const direction = currentPos.clone().sub(orbitControlsRef.current.target).normalize();
+                    const zoomOutPosition = direction.multiplyScalar(ZOOM_OUT_DISTANCE);
+                    initialCameraPositionRef.current = zoomOutPosition;
+                    initialTargetRef.current = new Vector3(0, 0, 0);
+                }
+                
+                zoomedBodyRef.current = null;
+                
+                // Update zoom indicator for zoom out
+                setShowZoomIndicator(true);
+                
+                // Hide indicator after zoom out animation completes
+                setTimeout(() => {
+                    setShowZoomIndicator(false);
+                }, 1000);
+            }, 1000);
         } else {
+            // Normal selection behavior
             setSelectedBody(body);
         }
     };
@@ -250,12 +317,230 @@ function App() {
         setIsDatePickerOpen(!isDatePickerOpen);
     };
 
+    // Save the initial camera position and target
+    useEffect(() => {
+        if (orbitControlsRef.current && !initialCameraPositionRef.current) {
+            // Store the initial camera position and target as reference points for zooming
+            initialCameraPositionRef.current = new Vector3(0, 0, ZOOM_OUT_DISTANCE);
+            initialTargetRef.current = new Vector3(0, 0, 0);
+            
+            // Set the camera to this initial position
+            orbitControlsRef.current.object.position.copy(initialCameraPositionRef.current);
+            orbitControlsRef.current.target.copy(initialTargetRef.current);
+            orbitControlsRef.current.update();
+            
+            console.log("Set wider initial camera position:", initialCameraPositionRef.current);
+        }
+    }, [orbitControlsRef.current]);
+
+    // Update the zoom animation effect
+    useEffect(() => {
+        // Check if we should run tracking
+        if (!isZoomingRef.current && !(isZoomedIn && zoomedBodyRef.current)) return;
+        
+        const animate = () => {
+            if (!orbitControlsRef.current) {
+                console.log("Missing refs for zoom animation");
+                return;
+            }
+            
+            // Calculate animation progress (0 to 1) over 1 second
+            const elapsedTime = (performance.now() - zoomStartTimeRef.current) / 1000;
+            const progress = Math.min(elapsedTime, 1); // Clamp to 1
+            
+            // Use easing function for smooth animation
+            const easedProgress = easeInOutCubic(progress);
+            
+            if (isZoomedIn && zoomedBodyRef.current) {
+                // Get the current position of the tracked body
+                const currentBodyPosition = getOrbitalPosition(zoomedBodyRef.current, simulationTime);
+                const updatedTargetPosition = new Vector3(
+                    currentBodyPosition.x, 
+                    currentBodyPosition.y, 
+                    currentBodyPosition.z
+                );
+                
+                // During zoom animation
+                orbitControlsRef.current.target.lerpVectors(
+                    orbitControlsRef.current.target.clone(),
+                    updatedTargetPosition,
+                    easedProgress
+                );
+                
+                // Calculate zoom distance based on whether this is a pulse zoom or normal zoom
+                const pulseZoomFactor = selectedBody && selectedBody.name === zoomedBodyRef.current.name ? 7 : 10;
+                const idealDistance = zoomedBodyRef.current.radius * zoomedBodyRef.current.scale * pulseZoomFactor;
+                
+                // Get the direction vector from camera to the target
+                const camera = orbitControlsRef.current.object;
+                const direction = new Vector3().subVectors(camera.position, updatedTargetPosition).normalize();
+                
+                // Calculate the desired camera position based on ideal distance
+                const targetCameraPosition = updatedTargetPosition.clone().add(
+                    direction.multiplyScalar(idealDistance)
+                );
+                
+                // Move the camera to the ideal position
+                orbitControlsRef.current.object.position.lerpVectors(
+                    orbitControlsRef.current.object.position.clone(),
+                    targetCameraPosition,
+                    easedProgress
+                );
+            } else if (!isZoomedIn && initialCameraPositionRef.current && initialTargetRef.current) {
+                // Zooming out - maintain camera direction while increasing distance
+                const currentPos = orbitControlsRef.current.object.position;
+                const currentTarget = orbitControlsRef.current.target;
+                
+                // Get current direction but use it with the fixed zoom out distance
+                const direction = currentPos.clone().sub(currentTarget).normalize();
+                const targetPosition = direction.multiplyScalar(ZOOM_OUT_DISTANCE);
+                
+                // Lerp the camera position
+                orbitControlsRef.current.object.position.lerpVectors(
+                    currentPos,
+                    targetPosition,
+                    easedProgress
+                );
+                
+                // Smoothly move target back to center
+                orbitControlsRef.current.target.lerpVectors(
+                    currentTarget,
+                    new Vector3(0, 0, 0),
+                    easedProgress
+                );
+            }
+            
+            // Force update the controls
+            orbitControlsRef.current.update();
+            
+            // If animation is complete
+            if (isZoomingRef.current && progress >= 1) {
+                isZoomingRef.current = false;
+                
+                // If we're zoomed out, stop the tracking and clear references
+                if (!isZoomedIn) {
+                    zoomedBodyRef.current = null;
+                    zoomTargetRef.current = null;
+                    // Update the initial position reference to current position
+                    if (orbitControlsRef.current) {
+                        initialCameraPositionRef.current = orbitControlsRef.current.object.position.clone();
+                        initialTargetRef.current = orbitControlsRef.current.target.clone();
+                    }
+                }
+                return;
+            }
+            
+            // Continue animation
+            requestAnimationFrame(animate);
+        };
+        
+        // Start animation loop
+        const animationId = requestAnimationFrame(animate);
+        
+        // Clean up animation frame on component unmount
+        return () => {
+            cancelAnimationFrame(animationId);
+        };
+    }, [isZoomedIn, simulationTime, selectedBody]);
+
+    // Easing function for smooth animation
+    const easeInOutCubic = (t: number): number => {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    };
+
+    const handleZoom = () => {
+        if (!orbitControlsRef.current) {
+            console.log("Can't zoom: no orbit controls ref");
+            return;
+        }
+        
+        // Check if we're already zoomed in to the selected body
+        const isZoomedToCurrentSelection = isZoomedIn && 
+            zoomedBodyRef.current && 
+            selectedBody && 
+            zoomedBodyRef.current.name === selectedBody.name;
+        
+        if (isZoomedToCurrentSelection) {
+            // ZOOM OUT to fixed distance
+            console.log("Zooming out from", zoomedBodyRef.current!.name);
+            
+            if (!initialCameraPositionRef.current || !initialTargetRef.current) {
+                console.log("No initial camera position saved");
+                return;
+            }
+            
+            // Set zoom state
+            setIsZoomedIn(false);
+            isZoomingRef.current = true;
+            zoomStartTimeRef.current = performance.now();
+            zoomedBodyRef.current = null;
+            
+            // Fixed zoom out position
+            const zoomOutPosition = new Vector3(0, 0, ZOOM_OUT_DISTANCE);
+            
+            // Update the camera target position
+            initialCameraPositionRef.current = zoomOutPosition;
+            initialTargetRef.current = new Vector3(0, 0, 0);
+            
+            // Create zoom out indicator
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            setZoomIndicatorStyle({
+                left: windowWidth / 2 - 50,
+                top: windowHeight / 2 - 50,
+                width: 100,
+                height: 100
+            });
+            
+            setShowZoomIndicator(true);
+            
+            // Hide indicator after animation completes
+            setTimeout(() => {
+                setShowZoomIndicator(false);
+            }, 1000);
+            
+        } else {
+            // ZOOM IN to selected body
+            if (!selectedBody) {
+                console.log("Can't zoom in: no selected body");
+                return;
+            }
+            
+            console.log("Zooming in to", selectedBody.name);
+            
+            // Store the selected body for tracking during animation
+            zoomedBodyRef.current = selectedBody;
+            isZoomingRef.current = true;
+            zoomStartTimeRef.current = performance.now();
+            setIsZoomedIn(true);
+            
+            // Create zoom visual indicator
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            setZoomIndicatorStyle({
+                left: windowWidth / 2 - 50,
+                top: windowHeight / 2 - 50,
+                width: 100,
+                height: 100
+            });
+            
+            setShowZoomIndicator(true);
+            
+            // Hide indicator after animation completes
+            setTimeout(() => {
+                setShowZoomIndicator(false);
+            }, 1000);
+        }
+    };
+
     return (
         <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
             {/* Single Canvas for all 3D content */}
             <div style={{ width: '100%', height: '100%' }}>
                 <Canvas 
-                    camera={{ position: [0, 0, 100], fov: 45 }}
+                    camera={{ position: [0, 0, 250], fov: 45 }}
                     onPointerMissed={() => {
                         if (selectedBody) {
                             setSelectedBody(null);
@@ -316,10 +601,19 @@ function App() {
                     
                     {/* Controls */}
                     <OrbitControls 
-                        enablePan={!isDraggingHandle && !selectedManeuver}
-                        enableZoom={!isDraggingHandle && !selectedManeuver}
-                        enableRotate={!isDraggingHandle && !selectedManeuver}
-                        enabled={!isDraggingHandle && !selectedManeuver}
+                        ref={orbitControlsRef}
+                        makeDefault
+                        minDistance={1}
+                        maxDistance={2000}
+                        enablePan={true}
+                        enableZoom={true}
+                        enableRotate={true}
+                        enabled={true}
+                        zoomSpeed={1.0}
+                        rotateSpeed={0.8}
+                        panSpeed={0.8}
+                        dampingFactor={0.1}
+                        autoRotate={false}
                     />
                 </Canvas>
             </div>
@@ -419,6 +713,31 @@ function App() {
                 buttons={prompt.buttons}
                 onClose={closePrompt}
             />
+
+            {/* Zoom level indicator */}
+            <div className={`zoom-level-indicator ${showZoomLevelIndicator ? 'visible' : ''} ${zoomLevel}`}>
+                Zoom: {zoomLevel === 'normal' ? 'Standard' : zoomLevel === 'wide' ? 'Wide' : 'Maximum'}
+            </div>
+            
+            {/* UI Elements */}
+            {showZoomIndicator && (
+                <div 
+                    className={`zoom-indicator ${isZoomedIn ? '' : 'zoom-out'}`}
+                    style={{
+                        left: zoomIndicatorStyle.left + 'px',
+                        top: zoomIndicatorStyle.top + 'px',
+                        width: zoomIndicatorStyle.width + 'px',
+                        height: zoomIndicatorStyle.height + 'px'
+                    }}
+                />
+            )}
+            
+            {selectedBody && (
+                <ZoomButton 
+                    onZoom={handleZoom} 
+                    isZoomedIn={isZoomedIn && zoomedBodyRef.current?.name === selectedBody.name}
+                />
+            )}
         </div>
     );
 }
