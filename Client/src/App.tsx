@@ -107,6 +107,7 @@ function App() {
     });
     const [zoomLevel, setZoomLevel] = useState<'normal' | 'wide' | 'extreme'>('normal');
     const [showZoomLevelIndicator, setShowZoomLevelIndicator] = useState(false);
+    const [autoRotateSpeed, setAutoRotateSpeed] = useState(0.3);
     
     const timeControlsRef = useRef<HTMLDivElement>(null);
     const orbitControlsRef = useRef<any>(null);
@@ -471,14 +472,13 @@ function App() {
             return;
         }
         
-        // Check if we're already zoomed in to the selected body
         const isZoomedToCurrentSelection = isZoomedIn && 
             zoomedBodyRef.current && 
             selectedBody && 
             zoomedBodyRef.current.name === selectedBody.name;
         
         if (isZoomedToCurrentSelection) {
-            // ZOOM OUT to fixed distance
+            // ZOOM OUT
             console.log("Zooming out from", zoomedBodyRef.current!.name);
             
             if (!initialCameraPositionRef.current || !initialTargetRef.current) {
@@ -517,8 +517,9 @@ function App() {
                 setShowZoomIndicator(false);
             }, 1000);
             
+            setAutoRotateSpeed(0.1); // Reset to normal rotation speed
         } else {
-            // ZOOM IN to selected body
+            // ZOOM IN
             if (!selectedBody) {
                 console.log("Can't zoom in: no selected body");
                 return;
@@ -549,6 +550,8 @@ function App() {
             setTimeout(() => {
                 setShowZoomIndicator(false);
             }, 1000);
+            
+            setAutoRotateSpeed(0.1); // Slower rotation when zoomed in
         }
     };
 
@@ -627,7 +630,7 @@ function App() {
                         minDistance={1}
                         maxDistance={2000}
                         zoomSpeed={1.0}
-                        rotateSpeed={0.3}
+                        rotateSpeed={autoRotateSpeed}
                         panSpeed={0.8}
                         dampingFactor={0.1}
                         autoRotate={!isPaused}
