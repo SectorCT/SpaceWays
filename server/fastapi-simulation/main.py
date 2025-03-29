@@ -34,7 +34,8 @@ from pydantic import BaseModel, Field
 # Import Django models after Django setup
 try:
     from orbits.models import BodyModel
-    from orbits.simulation import nbody_simulation_verlet, apply_maneuver, TIME_STEP, SIMULATION_STEPS, SNAPSHOT_INTERVAL
+    from orbits.simulation import nbody_simulation_verlet, apply_maneuver, TIME_STEP, SIMULATION_STEPS, SNAPSHOT_INTERVAL, simulate_year_in_chunks
+    from orbits.utils import date_to_seconds, seconds_to_date, get_trajectory_between_dates
 except ImportError as e:
     print(f"Error importing Django models: {e}")
     print(f"Current Python path: {sys.path}")
@@ -55,6 +56,28 @@ class ManeuverInput(BaseModel):
     body_name: str
     delta_velocity: List[float] = Field(..., min_items=3, max_items=3)
     simulation_time: Optional[float] = None  # Time at which to apply the maneuver
+
+class TrajectoryDateRangeInput(BaseModel):
+    body_name: str
+    start_date: str = Field(..., description="Start date in YYYY-MM-DD format")
+    end_date: str = Field(..., description="End date in YYYY-MM-DD format")
+
+class SimulationResponse(BaseModel):
+    status: str
+    message: str
+    trajectories: Optional[dict] = None
+
+class TrajectoryRangeRequest(BaseModel):
+    start_date: str = Field(..., description="Start date in YYYY-MM-DD format")
+    end_date: str = Field(..., description="End date in YYYY-MM-DD format")
+    body_names: List[str] = Field(..., description="List of body names to get trajectories for")
+
+class TrajectoryData(BaseModel):
+    body_name: str
+    positions: dict
+
+class SolarSystemBody(NBodyInput):  # Inherit from NBodyInput
+    pass
 
 @app.get("/health")
 async def health_check():
@@ -85,19 +108,19 @@ def save_bodies(bodies_data: List[NBodyInput]):
 def get_all_bodies():
     return list(BodyModel.objects.all())
 
-@app.post("/simulate_n_bodies/", summary="Simulate N-body system using Velocity Verlet")
-async def simulate_n_bodies(bodies_data: List[NBodyInput]):
+@app.post("/simulate_n_bodies/", summary="Simulate N-body system using Velocity Verlet for one year in 3-month chunks", response_model=SimulationResponse)
+async def simulate_n_bodies(bodies_data: List[dict], start_date: str = "2010-01-01"):
     try:
-        # Save bodies to database asynchronously
-        body_objs = await save_bodies(bodies_data)
-
-        # Run simulation (this is CPU-bound, so we'll run it in a thread pool)
-        trajectories = await sync_to_async(nbody_simulation_verlet)(
-            bodies=body_objs,
-            save_final=True 
+        # Run the year-long simulation in chunks
+        await sync_to_async(simulate_year_in_chunks)(
+            bodies_data=bodies_data,
+            start_date=start_date
         )
 
-        return trajectories
+        return SimulationResponse(
+            status="success",
+            message="Simulation completed successfully. Data saved to database."
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -127,13 +150,118 @@ async def apply_maneuver_endpoint(maneuver_data: ManeuverInput):
             start_time=maneuver_data.simulation_time
         )
         
-        return {
-            "maneuver_applied": {
-                "body": target_body.name,
-                "new_velocity": target_body.velocity.tolist(),
-                "simulation_time": maneuver_data.simulation_time
-            },
-            "trajectories": trajectories
+        return trajectories
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/trajectory_between_dates/", summary="Get trajectory data between two dates")
+async def get_trajectory_between_dates_endpoint(data: TrajectoryDateRangeInput):
+    try:
+        # Get the body from database
+        body = await sync_to_async(BodyModel.objects.get)(name=data.body_name)
+        
+        # Get the trajectory data
+        trajectory = body.get_trajectory()
+        
+        # Filter trajectory between dates
+        filtered_trajectory = get_trajectory_between_dates(
+            trajectory,
+            data.start_date,
+            data.end_date
+        )
+        
+        # Convert timestamps to dates for better readability
+        readable_trajectory = {
+            seconds_to_date(float(timestamp)): position
+            for timestamp, position in filtered_trajectory.items()
         }
+        
+        return readable_trajectory
+    except BodyModel.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Body {data.body_name} not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/get_trajectories/", summary="Get trajectory data for multiple bodies between dates", response_model=List[TrajectoryData])
+async def get_trajectories(data: TrajectoryRangeRequest):
+    try:
+        trajectories = []
+        
+        # Get trajectory data for each requested body
+        for body_name in data.body_names:
+            try:
+                body = await sync_to_async(BodyModel.objects.get)(name=body_name)
+                trajectory = body.get_trajectory()
+                
+                # Filter trajectory between dates
+                filtered_trajectory = get_trajectory_between_dates(
+                    trajectory,
+                    data.start_date,
+                    data.end_date
+                )
+                
+                # Convert timestamps to dates for better readability
+                readable_trajectory = {
+                    seconds_to_date(float(timestamp)): position
+                    for timestamp, position in filtered_trajectory.items()
+                }
+                
+                trajectories.append(TrajectoryData(
+                    body_name=body_name,
+                    positions=readable_trajectory
+                ))
+                
+            except BodyModel.DoesNotExist:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Body {body_name} not found in database"
+                )
+        
+        return trajectories
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@sync_to_async
+def save_bodies_raw(bodies_data: List[dict]):
+    body_objs = []
+    for b in bodies_data:
+        try:
+            # Try to get existing body or create new one
+            body_model = BodyModel.objects.filter(name=b["name"]).first()
+            if body_model is None:
+                body_model = BodyModel(name=b["name"])
+            
+            # Update the model with new data
+            body_model.mass = b["mass"]
+            body_model.position = b["position"]
+            body_model.velocity = b["velocity"]
+            body_model.save()
+            body_objs.append(body_model)
+        except Exception as e:
+            print(f"Error saving body {b['name']}: {e}")
+            raise
+    return body_objs
+
+@app.post("/simulate_solar_system/")
+async def simulate_solar_system(bodies_data: List[dict]):
+    try:
+        # Save bodies to database asynchronously using the raw function
+        body_objs = await save_bodies_raw(bodies_data)
+
+        # Run simulation with fixed parameters
+        trajectories = await sync_to_async(nbody_simulation_verlet)(
+            bodies=body_objs,
+            dt=TIME_STEP,  # 60 seconds
+            steps=SIMULATION_STEPS,  # 43829 steps
+            snapshot_interval=SNAPSHOT_INTERVAL,  # 52
+            save_final=True
+        )
+
+        return trajectories
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
