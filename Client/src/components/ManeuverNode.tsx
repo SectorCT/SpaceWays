@@ -115,31 +115,25 @@ export function ManeuverNode({
 
   // Handle drag updates
   useFrame(() => {
-    if (
-      isDragging &&
-      dragStartPos.current &&
-      dragStartOffset.current &&
-      dragStartDeltaV.current
-    ) {
+    if (isDragging && dragStartPos.current && dragStartOffset.current && dragStartDeltaV.current) {
       raycaster.current.setFromCamera(mouse, camera);
-      const intersects = raycaster.current.intersectObjects(
-        groupRef.current?.children || [],
-        true,
-      );
+      const intersects = raycaster.current.intersectObjects(groupRef.current?.children || [], true);
 
       if (intersects.length > 0) {
         const intersect = intersects[0];
         const axisVector = directionVectors[isDragging].clone().normalize();
         const dragVector = intersect.point.clone().sub(dragStartPos.current!);
-
+        
         // Calculate the projection of drag onto the axis and scale it
         const dragProjection = dragVector.dot(axisVector) * dragScale;
-
-        // Calculate the new position by adding the scaled projection to the base position
-        const newPosition = directionVectors[isDragging]
-          .clone()
-          .multiplyScalar(baseHandleLength)
-          .add(axisVector.multiplyScalar(dragProjection));
+        
+        // Only allow movement in the positive direction of the axis
+        const clampedProjection = Math.max(0, dragProjection);
+        
+        // Calculate the new position by adding the clamped projection to the base position
+        const newPosition = directionVectors[isDragging].clone().multiplyScalar(baseHandleLength).add(
+          axisVector.multiplyScalar(clampedProjection)
+        );
 
         // Calculate the length from center
         const length = newPosition.length();
@@ -147,9 +141,9 @@ export function ManeuverNode({
         // Only update if the length is greater than or equal to baseHandleLength
         if (length >= baseHandleLength) {
           // Update handle position
-          setHandlePositions((prev) => ({
+          setHandlePositions(prev => ({
             ...prev,
-            [isDragging]: newPosition,
+            [isDragging]: newPosition
           }));
 
           // Calculate deltaV change based on handle extension
@@ -159,22 +153,22 @@ export function ManeuverNode({
           // Update deltaV based on direction
           const newDeltaV = dragStartDeltaV.current!.clone();
           switch (isDragging) {
-            case "prograde":
+            case 'prograde':
               newDeltaV.z += deltaVChange;
               break;
-            case "retrograde":
+            case 'retrograde':
               newDeltaV.z -= deltaVChange;
               break;
-            case "normal":
+            case 'normal':
               newDeltaV.y += deltaVChange;
               break;
-            case "antinormal":
+            case 'antinormal':
               newDeltaV.y -= deltaVChange;
               break;
-            case "radialIn":
+            case 'radialIn':
               newDeltaV.x -= deltaVChange;
               break;
-            case "radialOut":
+            case 'radialOut':
               newDeltaV.x += deltaVChange;
               break;
           }
