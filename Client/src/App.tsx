@@ -193,6 +193,11 @@ function App() {
     const handleSelectBody = (body: CelestialBody) => {
         console.log("Selected body:", body.name);
         
+        // Close date picker if it's open
+        if (isDatePickerOpen) {
+            setIsDatePickerOpen(false);
+        }
+
         // If clicking the same body that's already selected
         if (selectedBody && selectedBody.name === body.name) {
             // Create pulse effect - zoom in briefly then out
@@ -306,6 +311,7 @@ function App() {
     };
     // Handle setting a specific date
     const handleSetDate = (newDate: Date) => {
+        console.log("Setting new date:", newDate);
         setSimulationTime(newDate);
         setIsDatePickerOpen(false);
         // Pause simulation when a specific date is set
@@ -314,8 +320,18 @@ function App() {
 
     // Handle showing/hiding the date picker
     const toggleDatePicker = () => {
+        console.log("Toggle date picker, current state:", isDatePickerOpen);
+        // If we're opening the date picker, close the planet panel
+        if (!isDatePickerOpen && selectedBody) {
+            setSelectedBody(null);
+        }
         setIsDatePickerOpen(!isDatePickerOpen);
     };
+
+    // Add useEffect to monitor date picker state
+    useEffect(() => {
+        console.log("Date picker state changed:", isDatePickerOpen);
+    }, [isDatePickerOpen]);
 
     // Save the initial camera position and target
     useEffect(() => {
@@ -600,20 +616,20 @@ function App() {
                     ))}
                     
                     {/* Controls */}
-                    <OrbitControls 
-                        ref={orbitControlsRef}
-                        makeDefault
-                        minDistance={1}
-                        maxDistance={2000}
+                    <OrbitControls       
                         enablePan={true}
                         enableZoom={true}
                         enableRotate={true}
                         enabled={true}
+                        ref={orbitControlsRef}
+                        makeDefault
+                        minDistance={1}
+                        maxDistance={2000}
                         zoomSpeed={1.0}
                         rotateSpeed={0.8}
                         panSpeed={0.8}
                         dampingFactor={0.1}
-                        autoRotate={false}
+                        autoRotate={true}
                     />
                 </Canvas>
             </div>
@@ -660,22 +676,29 @@ function App() {
                     Keyboard: Space = pause, &lt; = slower, &gt; = faster
                 </div>
                 
-                <div className="controls-row" style={{ marginTop: '12px' }}>
+                <div className="controls-row" style={{ marginTop: '12px', position: 'relative' }}>
                     <button 
                         className="time-button date-button"
                         onClick={toggleDatePicker}
                     >
                         Set Specific Date
                     </button>
+                    
+                    {isDatePickerOpen && (
+                        <div style={{ 
+                            position: 'absolute', 
+                            top: '1000%', 
+                            left: '340%', 
+                            width: '300px', 
+                        }}>
+                            <DateSelector 
+                                currentDate={simulationTime}
+                                onSetDate={handleSetDate}
+                                onClose={() => setIsDatePickerOpen(false)}
+                            />
+                        </div>
+                    )}
                 </div>
-                
-                {isDatePickerOpen && (
-                    <DateSelector 
-                        currentDate={simulationTime}
-                        onSetDate={handleSetDate}
-                        onClose={() => setIsDatePickerOpen(false)}
-                    />
-                )}
             </div>
 
             {/* Debug info */}
