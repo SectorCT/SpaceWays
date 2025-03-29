@@ -1206,7 +1206,7 @@ function App() {
         style={{
           position: "absolute",
           bottom: 20,
-          right: 20,
+          left: 20,
           color: "white",
           zIndex: 1000,
           background: "rgba(0,0,0,0.7)",
