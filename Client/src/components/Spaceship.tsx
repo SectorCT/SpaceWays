@@ -32,7 +32,7 @@ export function Spaceship({
   // Load the spaceship model
   const { scene } = useLoader(
     GLTFLoader,
-    "/src/assets/Spaceship/spaceship.glb",
+    "/assets/Spaceship/spaceship.glb",
   );
 
   useFrame(() => {

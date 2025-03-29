@@ -12,10 +12,11 @@ import { DateSelector } from "./components/DateSelector";
 import { ZoomButton } from "./components/ZoomButton";
 import { getPositionFromOrbit2 } from "./getPositionFromOrbit";
 import "./App.css";
-import { Spaceship } from "./components/Spaceship";
+// import { Spaceship } from "./components/Spaceship";
 import { orbitData } from "./orbitData";
 import * as THREE from "three";
 import { planetData } from "./consts/planetData";
+import React from "react";
 
 interface PromptButton {
   label: string;
@@ -34,7 +35,7 @@ interface ManeuverNodeData {
   deltaV: Vector3;
 }
 
-const exampleOrbit2 = orbitData;
+// const exampleOrbit2 = orbitData;
 
 const bodies = planetData.map((planet) => {
   return {
@@ -47,15 +48,15 @@ const bodies = planetData.map((planet) => {
 const sun = bodies.find((body) => body.name === "Sun")!;
 const earth = bodies.find((body) => body.name === "Earth")!;
 
-const spaceship: CelestialBody = {
-  name: "Spaceship",
-  orbit: exampleOrbit2["Rocket"],
-  radius: 70, // Increased from 10 to 100 for a much bigger clickable area
-  color: "#00ffff",
-  mass: 1000,
-  scale: 0.1,
-  dayLength: 24,
-};
+// const spaceship: CelestialBody = {
+//   name: "Spaceship",
+//   orbit: exampleOrbit2["Rocket"],
+//   radius: 70, // Increased from 10 to 100 for a much bigger clickable area
+//   color: "#00ffff",
+//   mass: 1000,
+//   scale: 0.1,
+//   dayLength: 24,
+// };
 
 function App() {
   const [simulationTime, setSimulationTime] = useState<Date>(new Date());
@@ -776,12 +777,12 @@ function App() {
                         speed={1}
                     />
 
-          <Spaceship
+          {/* <Spaceship
             body={spaceship}
             currentTime={simulationTime}
             isSelected={selectedBody?.name === spaceship.name}
             onSelect={handleSelectBody}
-          />
+          /> */}
 
           {/* Celestial bodies */}
           {planetData.map((planet) => {
@@ -791,9 +792,8 @@ function App() {
             };
             if (body.orbit) {
               return (
-                <>
+                <React.Fragment key={planet.name}>
                   <CelestialBodyComponent
-                    key={planet.name}
                     body={body}
                     currentTime={simulationTime}
                     isSelected={selectedBody?.name === planet.name}
@@ -807,7 +807,7 @@ function App() {
                     maneuverNodes={maneuverNodes}
                     selectedManeuver={selectedManeuver}
                   />
-                </>
+                </React.Fragment>
               );
             } else {
               return null;
