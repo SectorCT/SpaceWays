@@ -47,16 +47,28 @@ const bodies = planetData.map((planet) => {
 // Create references to all needed bodies
 const sun = bodies.find((body) => body.name === "Sun")!;
 const earth = bodies.find((body) => body.name === "Earth")!;
+const mercury = bodies.find((body) => body.name === "Mercury")!;
+const venus = bodies.find((body) => body.name === "Venus")!;
+const moon = bodies.find((body) => body.name === "Moon")!;
+const mars = bodies.find((body) => body.name === "Mars")!;
+const jupiter = bodies.find((body) => body.name === "Jupiter")!;
+const saturn = bodies.find((body) => body.name === "Saturn")!;
+const uranus = bodies.find((body) => body.name === "Uranus")!;
+const neptune = bodies.find((body) => body.name === "Neptune")!;
+const pluto = bodies.find((body) => body.name === "Pluto")!;
+
+// Create a dummy spaceship object for the UI references
+const spaceship = {
+  name: "Spaceship",
+  orbit: orbitData["Rocket"] || {},
+  radius: 70,
+  color: "#00ffff",
+  mass: 1000,
+  scale: 0.1,
+  dayLength: 24,
+};
 
 // const spaceship: CelestialBody = {
-//   name: "Spaceship",
-//   orbit: exampleOrbit2["Rocket"],
-//   radius: 70, // Increased from 10 to 100 for a much bigger clickable area
-//   color: "#00ffff",
-//   mass: 1000,
-//   scale: 0.1,
-//   dayLength: 24,
-// };
 
 function App() {
   const [simulationTime, setSimulationTime] = useState<Date>(new Date());
@@ -545,6 +557,11 @@ function App() {
             updatedTargetPosition,
             easedProgress,
           );
+
+          const pulseZoomFactor =
+          selectedBody && selectedBody.name === zoomedBodyRef.current.name
+            ? 7
+            : 10;
 
           
           // Use a larger multiplier for the Sun to ensure we're outside it
