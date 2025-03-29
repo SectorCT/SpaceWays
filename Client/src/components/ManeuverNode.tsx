@@ -60,7 +60,7 @@ export function ManeuverNode({
   const baseHandleLength = 50.0;
   const baseSphereRadius = 15.0;
   const baseHandleThickness = 3.0;
-  const deltaVSensitivity = 1;
+  const deltaVSensitivity = 2;
   const dragScale = 0.003;
 
   const [handlePositions, setHandlePositions] = useState<
