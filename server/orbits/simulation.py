@@ -1,43 +1,14 @@
 import numpy as np
 from .models import BodyModel
 import json
-import math
+
+# Physical constants
+G = 6.67430e-20  # km^3/(kg·s^2)
 
 # Simulation constants
-G = 6.67430e-20  # km^3/(kg·s^2)
-DT = 60.0  # seconds per step
-STEPS = 525949  # number of simulation steps
-BASE_SNAPSHOT_INTERVAL = 52  # base snapshot interval for Earth-like orbits
-MIN_SNAPSHOT_INTERVAL = 5  # minimum snapshot interval
-MAX_SNAPSHOT_INTERVAL = 100  # maximum snapshot interval
-
-def calculate_orbital_period(body: BodyModel, central_mass: float) -> float:
-    """
-    Calculate orbital period using Kepler's Third Law
-    T² = (4π²/GM)r³
-    Returns period in seconds
-    """
-    # Calculate semi-major axis (approximate using current distance from central body)
-    r = np.linalg.norm(body.position)
-    period = math.sqrt((4 * math.pi**2 * r**3) / (G * central_mass))
-    return period
-
-def get_adaptive_snapshot_interval(body: BodyModel, central_mass: float) -> int:
-    """
-    Calculate adaptive snapshot interval based on orbital period
-    """
-    # Get orbital period
-    period = calculate_orbital_period(body, central_mass)
-    
-    # Calculate how many snapshots we want per orbit
-    # Earth's period is about 3.15e7 seconds, so we want about 100 snapshots per orbit
-    snapshots_per_orbit = 100
-    desired_interval = int(period / (snapshots_per_orbit * DT))
-    
-    # Clamp to reasonable values
-    interval = max(MIN_SNAPSHOT_INTERVAL, min(desired_interval, MAX_SNAPSHOT_INTERVAL))
-    
-    return interval
+TIME_STEP = 60.0  # seconds
+SIMULATION_STEPS = 1000
+SNAPSHOT_INTERVAL = 52
 
 def compute_accelerations(bodies):
     n = len(bodies)
@@ -107,9 +78,12 @@ def apply_maneuver(body: BodyModel, delta_velocity: np.ndarray, simulation_time:
     body.save()
     return body
 
-def nbody_simulation_verlet(bodies, save_final=True, start_time=None):
+def nbody_simulation_verlet(bodies, dt=TIME_STEP, steps=SIMULATION_STEPS, snapshot_interval=SNAPSHOT_INTERVAL, save_final=True, start_time=None):
     """
     bodies: list of BodyModel
+    dt: time step in seconds (default: TIME_STEP)
+    steps: number of simulation steps (default: SIMULATION_STEPS)
+    snapshot_interval: interval between trajectory snapshots (default: SNAPSHOT_INTERVAL)
     save_final: if True, updates the DB after finishing
     start_time: The time to start the simulation from (if None, use current state)
     """
@@ -117,37 +91,27 @@ def nbody_simulation_verlet(bodies, save_final=True, start_time=None):
 
     # Initialize trajectories from history if available
     trajectories = {}
-    snapshot_intervals = {}
-    
-    # Find the central body (assumed to be the most massive)
-    central_body = max(bodies, key=lambda b: b.mass)
-    
-    # Calculate snapshot intervals for each body
     for body in bodies:
         if body.trajectory_json:
             trajectories[body.name] = json.loads(body.trajectory_json)
         else:
             trajectories[body.name] = {f"{current_time}": body.position.tolist()}
-        
-        # Calculate adaptive snapshot interval
-        snapshot_intervals[body.name] = get_adaptive_snapshot_interval(body, central_body.mass)
 
     accelerations = compute_accelerations(bodies)
 
-    for step in range(1, STEPS+1):
+    for step in range(1, steps+1):
         for i, body in enumerate(bodies):
-            body.position = body.position + body.velocity * DT + 0.5 * accelerations[i] * DT**2
+            body.position = body.position + body.velocity * dt + 0.5 * accelerations[i] * dt**2
 
         new_acc = compute_accelerations(bodies)
 
         for i, body in enumerate(bodies):
-            body.velocity = body.velocity + 0.5 * (accelerations[i] + new_acc[i]) * DT
+            body.velocity = body.velocity + 0.5 * (accelerations[i] + new_acc[i]) * dt
 
-        current_time += DT
+        current_time += dt
 
-        # Take snapshots based on each body's interval
-        for body in bodies:
-            if (step % snapshot_intervals[body.name] == 0) or (step == STEPS):
+        if (step % snapshot_interval == 0) or (step == steps):
+            for body in bodies:
                 trajectories[body.name][f"{current_time}"] = body.position.tolist()
 
         accelerations = new_acc
