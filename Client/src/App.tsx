@@ -1321,7 +1321,22 @@ function App() {
             <div className="planet-point jupiter-point" onClick={() => handleSelectBody(jupiter)}></div>
             <div className="planet-label" onClick={() => handleSelectBody(jupiter)}>Jupiter</div>
           </div>
-          
+
+          {/* Saturn Rings */}
+          <div 
+            style={{
+              position: "absolute",
+              left: `${planetScreenPositions.Saturn.x}px`,
+              top: `${planetScreenPositions.Saturn.y}px`,
+              width: "50px",
+              height: "50px",
+              borderRadius: "50%",
+              border: "10px solid rgba(255, 255, 255, 0.15)",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+              zIndex: 890
+            }}
+          />
           {/* Saturn */}
           <div 
             className={`planet-container ${selectedBody?.name === saturn.name ? 'selected' : ''}`}
