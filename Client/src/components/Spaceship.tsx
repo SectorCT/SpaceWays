@@ -93,7 +93,7 @@ export function Spaceship({
         onPointerOver={() => (document.body.style.cursor = "pointer")}
         onPointerOut={() => (document.body.style.cursor = "auto")}
       >
-        <primitive object={scene} scale={2} />
+        <primitive object={scene} scale={1.5} />
         <pointLight
           position={[0, 0, 0]}
           color="#00ffff"
