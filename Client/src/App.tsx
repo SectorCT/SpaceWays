@@ -565,12 +565,6 @@ function App() {
             updatedTargetPosition,
             easedProgress,
           );
-
-          const pulseZoomFactor =
-          selectedBody && selectedBody.name === zoomedBodyRef.current.name
-            ? 7
-            : 10;
-
           
           // Use a larger multiplier for the Sun to ensure we're outside it
           const zoomMultiplier = zoomedBodyRef.current.name === "Sun" ? 10 : 3;
