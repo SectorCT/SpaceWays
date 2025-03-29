@@ -17,10 +17,10 @@ Space Waze is an accessible, learner-friendly 3D space simulator, that allows us
    - Now we need to sum the effect of all objects on the acceleration of object i.
    - Fianlly, we use a Velocity Verlet Integration to calculate the position and velocity of each object using the accelaration. We choose to do this method becuase it remains stable over a longer time.
    We repeat this algorithm for every body once every 60 seconds of the simulation to accurately calculate the orbits of the objects. 
-2. Data set
+2. Data set:
    We save the trajectories we calculated into a database so we can access them in our frontend without needing to send millions of lines of a data set over HTTP requests alone.
    This also allows us to retain information about the past trajectories of each object so we can use them in calculations for maneuvers. 
    We use PostreSQL for this.
-3. Frameworks
+3. Frameworks:
    - We use Django to connect to the database
    - We use FastAPI to create endpoints and quickly adress requests from the frontend. 
