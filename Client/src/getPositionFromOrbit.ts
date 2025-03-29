@@ -1,51 +1,50 @@
-import { CelestialBody } from "./types/CelestialBody";
+import { OrbitData2 } from "./types/Orbit2";
+import { Vector3 } from "three";
 
-export function getOrbitalPosition(body: CelestialBody, currentTime: Date): { x: number; y: number; z: number } {
-    const { orbit } = body;
-    const { semi_major_axis: a, eccentricity: e, inclination, raan, arg_periapsis, mean_motion, epoch } = orbit;
-
-    // Convert angles to radians
-    const i = inclination * (Math.PI / 180);
-    const Ω = raan * (Math.PI / 180);
-    const ω = arg_periapsis * (Math.PI / 180);
-
-    // Compute time since epoch
-    const epochTime = new Date(epoch).getTime() / 1000; // Convert to seconds
-    const currentTimeSec = currentTime.getTime() / 1000;
-    const Δt = currentTimeSec - epochTime; // Time difference in seconds
-
-    // Compute current Mean Anomaly (M)
-    const M = (mean_motion * Δt) % (2 * Math.PI); // Keep it within 0-2π
-
-    // Solve Kepler's Equation for Eccentric Anomaly (E) using Newton's method
-    let E = M;
-    for (let j = 0; j < 10; j++) { // Iterate to refine E
-        E = M + e * Math.sin(E);
+export function getPositionFromOrbit2(orbit: OrbitData2, simulationTime: number, simulationStartTime: number): Vector3 {
+    if (orbit === undefined) {
+        return new Vector3(0, 0, 0);
     }
 
-    // Compute True Anomaly (ν)
-    const ν = 2 * Math.atan2(
-        Math.sqrt(1 + e) * Math.sin(E / 2),
-        Math.sqrt(1 - e) * Math.cos(E / 2)
+    const timestamps = Object.keys(orbit).map(Number);
+    const sortedTimestamps = timestamps.sort((a, b) => a - b);
+
+    // Convert to seconds without flooring
+    const currentTime = (simulationTime/1000 - simulationStartTime/1000);
+    
+    // Find the two timestamps we're between
+    let left = 0;
+    while (left < sortedTimestamps.length - 1 && sortedTimestamps[left + 1] <= currentTime) {
+        left++;
+    }
+    
+    // If we're at the end of the array, wrap around to the beginning
+    const right = (left + 1) % sortedTimestamps.length;
+    
+    // Get the positions at these timestamps
+    const leftTimestamp = sortedTimestamps[left];
+    const rightTimestamp = sortedTimestamps[right];
+    
+    // Calculate interpolation factor
+    let t = (currentTime - leftTimestamp) / (rightTimestamp - leftTimestamp);
+    
+    // Handle wrap-around case
+    if (right === 0) {
+        const period = sortedTimestamps[sortedTimestamps.length - 1] - sortedTimestamps[0];
+        t = (currentTime - leftTimestamp) / period;
+    }
+    
+    // Clamp t between 0 and 1 to prevent extrapolation
+    t = Math.max(0, Math.min(1, t));
+
+    const position = orbit[leftTimestamp.toFixed(1)];
+    const nextPosition = orbit[rightTimestamp.toFixed(1)];
+
+    const interpolatedPosition = new Vector3(
+        position[0] + (nextPosition[0] - position[0]) * t,
+        position[1] + (nextPosition[1] - position[1]) * t,
+        position[2] + (nextPosition[2] - position[2]) * t
     );
-
-    // Compute Orbital Radius (r)
-    const r = (a * (1 - e * e)) / (1 + e * Math.cos(ν));
-
-    // Compute position in orbital plane
-    const x_prime = r * Math.cos(ν);
-    const y_prime = r * Math.sin(ν);
-
-    // Rotate to 3D Space using Inclination, RAAN, and Argument of Periapsis
-    const cosΩ = Math.cos(Ω), sinΩ = Math.sin(Ω);
-    const cosω = Math.cos(ω), sinω = Math.sin(ω);
-    const cosi = Math.cos(i), sini = Math.sin(i);
-
-    const x = (cosΩ * cosω - sinΩ * sinω * cosi) * x_prime +
-              (-cosΩ * sinω - sinΩ * cosω * cosi) * y_prime;
-    const y = (sinΩ * cosω + cosΩ * sinω * cosi) * x_prime +
-              (-sinΩ * sinω + cosΩ * cosω * cosi) * y_prime;
-    const z = (sinω * sini) * x_prime + (cosω * sini) * y_prime;
-
-    return { x, y, z };
+    
+    return interpolatedPosition;
 }

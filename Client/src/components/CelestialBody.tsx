@@ -1,8 +1,8 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Sphere } from '@react-three/drei'
 import { CelestialBody } from '../types/CelestialBody'
-import { getOrbitalPosition } from '../getPositionFromOrbit'
+import { getPositionFromOrbit2 } from '../getPositionFromOrbit'
 import * as THREE from 'three'
 import { SelectionIndicator } from './SelectionIndicator'
 
@@ -11,65 +11,87 @@ interface CelestialBodyProps {
     currentTime: Date;
     isSelected: boolean;
     onSelect: (body: CelestialBody) => void;
+    simulationStartTime: Date;
+    onPositionUpdate?: (position: THREE.Vector3) => void;
 }
 
 export function CelestialBodyComponent({ 
     body, 
     currentTime, 
     isSelected, 
-    onSelect 
+    onSelect,
+    simulationStartTime,
+    onPositionUpdate
 }: CelestialBodyProps) {
     const meshRef = useRef<THREE.Mesh>(null)
-    const [texture, setTexture] = useState<THREE.Texture | null>(null)
+    const [position, setPosition] = useState<THREE.Vector3>(new THREE.Vector3(0, 0, 0))
+    const [material, setMaterial] = useState<THREE.MeshBasicMaterial | null>(null)
     const [isLoading, setIsLoading] = useState(true)
-    const lastTimeRef = useRef(currentTime)
-    const [position, setPosition] = useState<THREE.Vector3>(new THREE.Vector3())
-    const materialRef = useRef<THREE.MeshBasicMaterial>(null)
-    
-    // Update material color only based on texture, not selection
-    useEffect(() => {
-        if (meshRef.current && meshRef.current.material) {
-            const material = meshRef.current.material as THREE.MeshBasicMaterial;
-            if (texture) {
-                material.color.set(0xffffff);
-            } else {
-                material.color.set(body.color);
-            }
-        }
-    }, [texture, body.color]);
-    
+    const [loadError, setLoadError] = useState<string | null>(null)
+    const lastTimeRef = useRef<Date>(currentTime)
+
+    // Load texture if provided
     useEffect(() => {
         if (body.texture) {
-            setIsLoading(true)
-            const loader = new THREE.TextureLoader()
-            
-            loader.load(
+            console.log(`Loading texture for ${body.name} from: ${body.texture}`);
+            const textureLoader = new THREE.TextureLoader()
+            textureLoader.load(
                 body.texture,
                 (loadedTexture) => {
-                    loadedTexture.needsUpdate = true
-                    setTexture(loadedTexture)
-                    setIsLoading(false)
+                    console.log(`Successfully loaded texture for ${body.name}`);
+                    const newMaterial = new THREE.MeshBasicMaterial({
+                        map: loadedTexture,
+                    });
+                    setMaterial(newMaterial);
+                    setIsLoading(false);
+                    setLoadError(null);
                 },
-                (error) => {
-                    console.error('Error loading texture for', body.name, ':', error)
-                    setIsLoading(false)
+                (progress) => {
+                    console.log(`Loading progress for ${body.name}: ${(progress.loaded / progress.total * 100).toFixed(2)}%`);
+                },
+                (error:any) => {
+                    console.error(`Error loading texture for ${body.name}:`, error);
+                    // Create a fallback material with the body's color
+                    const fallbackMaterial = new THREE.MeshBasicMaterial({
+                        color: new THREE.Color(body.color)
+                    });
+                    setMaterial(fallbackMaterial);
+                    setIsLoading(false);
+                    setLoadError(error.message);
                 }
-            )
+            );
         } else {
-            setIsLoading(false)
+            console.log(`No texture provided for ${body.name}`);
+            const defaultMaterial = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(body.color)
+            });
+            setMaterial(defaultMaterial);
+            setIsLoading(false);
         }
-    }, [body.texture, body.name])
-    
+    }, [body.texture, body.name, isSelected, body.color]);
+
+    // Update material color when selection changes
+    useEffect(() => {
+        if (material) {
+            material.color.setHex(isSelected ? 0x88ccff : (body.texture ? 0xffffff : new THREE.Color(body.color).getHex()));
+        }
+    }, [isSelected, material, body.texture, body.color]);
+
     useFrame(() => {
         if (meshRef.current) {
             // Update position based on simulation time
-            const newPosition = getOrbitalPosition(body, currentTime)
+            const newPosition = getPositionFromOrbit2(body.orbit, currentTime.getTime(), simulationStartTime.getTime())
             meshRef.current.position.set(newPosition.x, newPosition.y, newPosition.z)
-            setPosition(new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z))
+            setPosition(newPosition)
+            
+            // Notify parent of position update
+            if (onPositionUpdate) {
+                onPositionUpdate(newPosition)
+            }
             
             // Calculate rotation based on time difference
             const timeDiff = (currentTime.getTime() - lastTimeRef.current.getTime()) / 1000 // Convert to seconds
-            const rotationSpeed = (2 * Math.PI) / body.orbit.orbital_period
+            const rotationSpeed = (2 * Math.PI) / (body.dayLength * 60 * 60)
             meshRef.current.rotation.y += rotationSpeed * timeDiff
             
             lastTimeRef.current = currentTime
@@ -77,46 +99,33 @@ export function CelestialBodyComponent({
     })
 
     // Initial position
-    const initialPosition = getOrbitalPosition(body, currentTime)
+    const initialPosition = getPositionFromOrbit2(body.orbit, currentTime.getTime(), simulationStartTime.getTime())
     const handleClick = (event: any) => {
         event.stopPropagation();
         onSelect(body);
     };
 
-    if (isLoading) {
-        console.log(`${body.name} is still loading, not rendering`);
+    if (isLoading || !material) {
         return null // Don't render anything while loading
     }
 
-    // Define the material color based on selection state and texture
-    const materialColor = isSelected 
-        ? new THREE.Color(0x88ccff) 
-        : (texture ? new THREE.Color(0xffffff) : new THREE.Color(body.color));
-    console.log(`Rendering ${body.name} with texture: ${texture ? 'loaded' : 'none'}`);
+    if (loadError) {
+        console.warn(`Failed to load texture for ${body.name}: ${loadError}`);
+    }
 
     return (
-        <>
+        <group>
             <Sphere
+                rotation={new THREE.Euler(0, Math.PI/2, Math.PI/2)}
                 ref={meshRef}
                 args={[body.radius * body.scale, 32, 32]}
-                position={[initialPosition.x, initialPosition.y, initialPosition.z]}
+                position={initialPosition.toArray()}
                 onClick={handleClick}
-                onPointerOver={() => document.body.style.cursor = 'pointer'}
-                onPointerOut={() => document.body.style.cursor = 'auto'}
+                
             >
-                <meshBasicMaterial
-                    ref={materialRef}
-                    map={texture || undefined}
-                    color={materialColor}
-                />
+                <primitive object={material} />
             </Sphere>
-
-            {isSelected && (
-                <SelectionIndicator 
-                    position={position} 
-                    radius={body.radius * body.scale}
-                />
-            )}
-        </>
+            {isSelected && <SelectionIndicator position={position} radius={body.radius * body.scale} />}
+        </group>
     )
 } 
