@@ -15,6 +15,7 @@ import "./App.css";
 import { Spaceship } from "./components/Spaceship";
 import { orbitData } from "./orbitData";
 import * as THREE from "three";
+import { planetData } from "./consts/planetData";
 
 interface PromptButton {
   label: string;
@@ -35,20 +36,17 @@ interface ManeuverNodeData {
 
 const exampleOrbit2 = orbitData;
 
-const moon: CelestialBody = {
-  name: "Moon",
-  orbit: exampleOrbit2["Moon"],
-  radius: 1737,
-  color: "#808080",
-  mass: 7.348e22,
-  scale: 1,
-  texture:"https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg",
-  dayLength: 24,
-};
+const bodies = planetData.map((planet) => {
+  return {
+    ...planet,
+    orbit: orbitData[planet.name as keyof typeof orbitData],
+  };
+});
+
 
 const spaceship: CelestialBody = {
   name: "Spaceship",
-  orbit: exampleOrbit2["Moon"],
+  orbit: exampleOrbit2["Rocket"],
   radius: 70, // Increased from 10 to 100 for a much bigger clickable area
   color: "#00ffff",
   mass: 1000,
@@ -56,107 +54,11 @@ const spaceship: CelestialBody = {
   dayLength: 24,
 };
 
-const earth: CelestialBody = {
-  name: "Earth",
-  orbit: exampleOrbit2["Earth"],
-  radius: 6371,
-  color: "#4287f5",
-  mass: 5.972e24,
-  scale: 1,
-  texture:
-    "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg",
-  dayLength: 24,
-};
+//this will always exist
+const earth = bodies.find((body) => body.name === "Earth")!;
 
-const sun: CelestialBody = {
-  name: "Sun",
-  orbit: exampleOrbit2["Sun"],
-  radius: 696340,
-  color: "#ff0000",
-  mass: 1.989e30,
-  scale: 1,
-  texture: "/src/assets/2k_sun.jpg",
-  dayLength: 24,
-};
-
-const mercury: CelestialBody = {
-  name: "Mercury",
-  orbit: exampleOrbit2["Sun"], // Temporarily use Sun's orbit
-  radius: 2439.7,
-  color: "#A0522D",
-  mass: 3.285e23,
-  scale: 1,
-  texture: "/src/assets/2k_mercury.jpg",
-  dayLength: 1407.6,
-};
-
-const venus: CelestialBody = {
-  name: "Venus",
-  orbit: exampleOrbit2["Sun"], // Temporarily use Sun's orbit
-  radius: 6051.8,
-  color: "#DEB887",
-  mass: 4.867e24,
-  scale: 1,
-  texture: "/src/assets/2k_venus.jpg",
-  dayLength: -5832.5,
-};
-
-const mars: CelestialBody = {
-  name: "Mars",
-  orbit: exampleOrbit2["Earth"],
-  radius: 3389.5,
-  color: "#CD5C5C",
-  mass: 6.39e23,
-  scale: 1,
-  texture: "/src/assets/2k_mars.jpg",
-  dayLength: 24.6,
-};
-
-const jupiter: CelestialBody = {
-  name: "Jupiter",
-  orbit: exampleOrbit2["Earth"],
-  radius: 69911,
-  color: "#DEB887",
-  mass: 1.898e27,
-  scale: 1,
-  texture: "/src/assets/2k_jupiter.jpg",
-  dayLength: 9.9,
-};
-
-const saturn: CelestialBody = {
-  name: "Saturn",
-  orbit: exampleOrbit2["Earth"],
-  radius: 58232,
-  color: "#FFE4B5",
-  mass: 5.683e26,
-  scale: 1,
-  texture: "/src/assets/2k_saturn.jpg",
-  dayLength: 10.7,
-};
-
-const uranus: CelestialBody = {
-  name: "Uranus",
-  orbit: exampleOrbit2["Earth"],
-  radius: 25362,
-  color: "#87CEEB",
-  mass: 8.681e25,
-  scale: 1,
-  texture: "/src/assets/2k_uranus.jpg",
-  dayLength: -17.2,
-};
-
-const neptune: CelestialBody = {
-  name: "Neptune",
-  orbit: exampleOrbit2["Earth"],
-  radius: 24622,
-  color: "#4169E1",
-  mass: 1.024e26,
-  scale: 1,
-  texture: "/src/assets/2k_neptune.jpg",
-  dayLength: 16.1,
-};
-
-const ZOOM_OUT_DISTANCE = 10000; // Fixed zoom out distance
+//this will always exist
+const sun = bodies.find((body) => body.name === "Sun")!;
 
 
 function App() {
@@ -625,11 +527,6 @@ function App() {
             easedProgress,
           );
 
-          // Calculate zoom distance based on whether this is a pulse zoom or normal zoom
-          const pulseZoomFactor =
-            selectedBody && selectedBody.name === zoomedBodyRef.current.name
-              ? 7
-              : 10;
           
           // Use a larger multiplier for the Sun to ensure we're outside it
           const zoomMultiplier = zoomedBodyRef.current.name === "Sun" ? 10 : 3;
@@ -673,7 +570,6 @@ function App() {
           // Get current camera position and target
           const currentPos = orbitControlsRef.current.object.position;
           const currentTarget = orbitControlsRef.current.target;
-          const direction = new Vector3(0, 0, 1); // Point towards positive Z
 
           // Calculate target position relative to Earth
           const targetPosition = new Vector3(
@@ -875,7 +771,7 @@ function App() {
                 >
                     {/* Background stars - positioned far behind everything */}
                     <Stars 
-                        radius={600000000} 
+                        radius={sun.radius * sun.scale * 10000} 
                         depth={50} 
                         count={50000} 
                         factor={6} 
@@ -884,24 +780,6 @@ function App() {
                         speed={1}
                     />
 
-          {/* Celestial bodies */}
-          <CelestialBodyComponent
-            body={earth}
-            currentTime={simulationTime}
-            isSelected={selectedBody?.name === earth.name}
-            onSelect={handleSelectBody}
-            simulationStartTime={simulationStartTime}
-          />
-          {/* Moon */}
-          <CelestialBodyComponent
-            body={moon}
-            currentTime={simulationTime}
-            isSelected={selectedBody?.name === moon.name}
-            onSelect={handleSelectBody}
-            simulationStartTime={simulationStartTime}
-          />
-
-          {/* Spaceship */}
           <Spaceship
             body={spaceship}
             currentTime={simulationTime}
@@ -909,141 +787,44 @@ function App() {
             onSelect={handleSelectBody}
           />
 
-          <CelestialBodyComponent
-            body={sun}
-            currentTime={simulationTime}
-            isSelected={selectedBody?.name === sun.name}
-            onSelect={handleSelectBody}
-            simulationStartTime={simulationStartTime}
-          />
+          {/* Celestial bodies */}
+          {planetData.map((planet) => {
+            const body = {
+              ...planet,
+              orbit: orbitData[planet.name as keyof typeof orbitData],
+            };
+            if (body.orbit) {
+              return (
+                <>
+                  <CelestialBodyComponent
+                    key={planet.name}
+                    body={body}
+                    currentTime={simulationTime}
+                    isSelected={selectedBody?.name === planet.name}
+                    onSelect={handleSelectBody}
+                    simulationStartTime={simulationStartTime}
+                  />
+                  <OrbitLine2
+                    orbit={body.orbit}
+                    color={body.color}
+                    onOrbitClick={handleOrbitClick}
+                    maneuverNodes={maneuverNodes}
+                    selectedManeuver={selectedManeuver}
+                  />
+                </>
+              );
+            } else {
+              return null;
+            }
+          })}
 
-          <CelestialBodyComponent
-            body={mercury}
-            currentTime={simulationTime}
-            isSelected={selectedBody?.name === mercury.name}
-            onSelect={handleSelectBody}
-            simulationStartTime={simulationStartTime}
-          />
-
-          <CelestialBodyComponent
-            body={venus}
-            currentTime={simulationTime}
-            isSelected={selectedBody?.name === venus.name}
-            onSelect={handleSelectBody}
-            simulationStartTime={simulationStartTime}
-          />
-
-          <CelestialBodyComponent
-            body={mars}
-            currentTime={simulationTime}
-            isSelected={selectedBody?.name === mars.name}
-            onSelect={handleSelectBody}
-            simulationStartTime={simulationStartTime}
-          />
-
-          <CelestialBodyComponent
-            body={jupiter}
-            currentTime={simulationTime}
-            isSelected={selectedBody?.name === jupiter.name}
-            onSelect={handleSelectBody}
-            simulationStartTime={simulationStartTime}
-          />
-
-          <CelestialBodyComponent
-            body={saturn}
-            currentTime={simulationTime}
-            isSelected={selectedBody?.name === saturn.name}
-            onSelect={handleSelectBody}
-            simulationStartTime={simulationStartTime}
-          />
-
-          <CelestialBodyComponent
-            body={uranus}
-            currentTime={simulationTime}
-            isSelected={selectedBody?.name === uranus.name}
-            onSelect={handleSelectBody}
-            simulationStartTime={simulationStartTime}
-          />
-
-          <CelestialBodyComponent
-            body={neptune}
-            currentTime={simulationTime}
-            isSelected={selectedBody?.name === neptune.name}
-            onSelect={handleSelectBody}
-            simulationStartTime={simulationStartTime}
-          />
-
-          <OrbitLine2
-            orbit={earth.orbit}
-            color={earth.color}
-            onOrbitClick={handleOrbitClick}
-            maneuverNodes={maneuverNodes}
-            selectedManeuver={selectedManeuver}
-          />
-
-          <OrbitLine2
-            orbit={moon.orbit}
-            color={moon.color}
-            onOrbitClick={handleOrbitClick}
-            maneuverNodes={maneuverNodes}
-            selectedManeuver={selectedManeuver}
-          />
-
-          <OrbitLine2
-            orbit={mercury.orbit}
-            color={mercury.color}
-            onOrbitClick={handleOrbitClick}
-            maneuverNodes={maneuverNodes}
-            selectedManeuver={selectedManeuver}
-          />
-
-          <OrbitLine2
-            orbit={venus.orbit}
-            color={venus.color}
-            onOrbitClick={handleOrbitClick}
-            maneuverNodes={maneuverNodes}
-            selectedManeuver={selectedManeuver}
-          />
-
-          <OrbitLine2
-            orbit={mars.orbit}
-            color={mars.color}
-            onOrbitClick={handleOrbitClick}
-            maneuverNodes={maneuverNodes}
-            selectedManeuver={selectedManeuver}
-          />
-
-          <OrbitLine2
-            orbit={jupiter.orbit}
-            color={jupiter.color}
-            onOrbitClick={handleOrbitClick}
-            maneuverNodes={maneuverNodes}
-            selectedManeuver={selectedManeuver}
-          />
-
-          <OrbitLine2
+          {/* <OrbitLine2
             orbit={saturn.orbit}
             color={saturn.color}
             onOrbitClick={handleOrbitClick}
             maneuverNodes={maneuverNodes}
             selectedManeuver={selectedManeuver}
-          />
-
-          <OrbitLine2
-            orbit={uranus.orbit}
-            color={uranus.color}
-            onOrbitClick={handleOrbitClick}
-            maneuverNodes={maneuverNodes}
-            selectedManeuver={selectedManeuver}
-          />
-
-          <OrbitLine2
-            orbit={neptune.orbit}
-            color={neptune.color}
-            onOrbitClick={handleOrbitClick}
-            maneuverNodes={maneuverNodes}
-            selectedManeuver={selectedManeuver}
-          />
+          />*/}
 
           {/* Render all maneuver nodes */}
           {maneuverNodes.map((node) => (
@@ -1069,7 +850,7 @@ function App() {
             ref={orbitControlsRef}
             makeDefault
             minDistance={1}
-            maxDistance={sun.radius * sun.scale * 1000} // Increased from 100 to 1000 for extreme zoom out
+            maxDistance={sun.radius * sun.scale * 10000} // Increased from 100 to 1000 for extreme zoom out
             zoomSpeed={2.5} // Increased from 2.0 to 2.5 for even faster zooming
             rotateSpeed={1}
             panSpeed={0.8}
