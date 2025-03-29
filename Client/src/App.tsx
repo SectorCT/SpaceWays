@@ -11,6 +11,7 @@ import { ManeuverNode } from "./components/ManeuverNode";
 import { Vector3 } from "three";
 import { DateSelector } from "./components/DateSelector";
 import "./App.css";
+import { Spaceship } from "./components/Spaceship";
 
 interface PromptButton {
     label: string;
@@ -283,9 +284,18 @@ function App() {
                         isSelected={selectedBody?.name === earth.name}
                         onSelect={handleSelectBody}
                     />
-                    <CelestialBodyComponent 
-                        body={moon} 
-                        currentTime={simulationTime} 
+                    {/* Moon */}
+                    {/* <CelestialBodyComponent
+                        body={moon}
+                        currentTime={currentTime}
+                        isSelected={selectedBody?.name === moon.name}
+                        onSelect={handleBodySelect}
+                    /> */}
+
+                    {/* Spaceship */}
+                    <Spaceship
+                        body={moon}
+                        currentTime={simulationTime}
                         isSelected={selectedBody?.name === moon.name}
                         onSelect={handleSelectBody}
                     />
