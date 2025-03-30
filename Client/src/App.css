@@ -433,11 +433,6 @@ body {
   opacity: 1;
 }
 
-.sun-container.selected .sun-2d {
-  /* Animation now controlled in JSX with inline styles */
-  /* animation: selectedSun 3s infinite alternate; */
-}
-
 .sun-container.selected .planet-label {
   opacity: 1;
   background-color: rgba(255, 80, 0, 0.8);

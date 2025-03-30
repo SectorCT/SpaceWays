@@ -12,7 +12,6 @@ import { DateSelector } from "./components/DateSelector";
 import { ZoomButton } from "./components/ZoomButton";
 import { getPositionFromOrbit2 } from "./getPositionFromOrbit";
 import "./App.css";
-// import { Spaceship } from "./components/Spaceship";
 import { orbitData } from "./orbitData";
 import * as THREE from "three";
 import { planetData } from "./consts/planetData";
@@ -35,8 +34,6 @@ interface ManeuverNodeData {
   deltaV: Vector3;
 }
 
-// const exampleOrbit2 = orbitData;
-
 const bodies = planetData.map((planet) => {
   return {
     ...planet,
@@ -56,23 +53,9 @@ const saturn = bodies.find((body) => body.name === "Saturn")!;
 const uranus = bodies.find((body) => body.name === "Uranus")!;
 const neptune = bodies.find((body) => body.name === "Neptune")!;
 
-
-// Create a dummy spaceship object for the UI references
-const spaceship = {
-  name: "Spaceship",
-  orbit: orbitData["Rocket"] || {},
-  radius: 70,
-  color: "#00ffff",
-  mass: 1000,
-  scale: 0.1,
-  dayLength: 24,
-};
-
-// const spaceship: CelestialBody = {
-
 function App() {
   const [simulationTime, setSimulationTime] = useState<Date>(new Date());
-  const [timeSpeed, setTimeSpeed] = useState(1); // 1 = real time, 2 = 2x speed, etc.
+  const [timeSpeed, setTimeSpeed] = useState(1);
   const [isPaused, setIsPaused] = useState(false);
   const [selectedBody, setSelectedBody] = useState<CelestialBody | null>(earth);
   const [selectedManeuver, setSelectedManeuver] = useState<string | null>(null);
@@ -127,8 +110,7 @@ function App() {
     Jupiter: { x: 0, y: 0 },
     Saturn: { x: 0, y: 0 },
     Uranus: { x: 0, y: 0 },
-    Neptune: { x: 0, y: 0 },
-    Spaceship: { x: 0, y: 0 }
+    Neptune: { x: 0, y: 0 }
   });
 
   useEffect(() => {
@@ -148,7 +130,6 @@ function App() {
   // Add keyboard controls for pause, speed up, and slow down
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Skip if user is typing in an input field
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
@@ -158,132 +139,101 @@ function App() {
       }
 
       switch (e.key) {
-        case " ": // Space bar for pause/resume
+        case " ":
           setIsPaused((prevPaused) => !prevPaused);
           break;
-        case ">": // > for speed up
-        case ".": // Also allow period key (unshifted >)
+        case ">":
+        case ".":
           handleSpeedChange(timeSpeed * 2);
           break;
-        case "<": // < for slow down
-        case ",": // Also allow comma key (unshifted <)
+        case "<":
+        case ",":
           handleSpeedChange(Math.max(1, timeSpeed / 2));
           break;
-        case "=": // = key for extreme zoom out
-        case "+": // + key for extreme zoom out
+        case "=":
+        case "+":
           if (orbitControlsRef.current) {
-            // Get current controls position
             const currentPos = orbitControlsRef.current.object.position.clone();
             const currentTarget = orbitControlsRef.current.target.clone();
             
-            // Calculate direction vector (normalized)
             const direction = new Vector3()
               .subVectors(currentPos, currentTarget)
               .normalize();
             
-            // Move very far in that direction (x10 current distance)
-            const distance = currentPos.distanceTo(currentTarget) * 10; // Increased from 5 to 10
+            const distance = currentPos.distanceTo(currentTarget) * 10;
             orbitControlsRef.current.object.position.copy(
               currentTarget.clone().add(direction.multiplyScalar(distance))
             );
             
-            // Update controls
             orbitControlsRef.current.update();
             setZoomLevel("extreme");
             
-            // Show zoom level indicator briefly
             setShowZoomLevelIndicator(true);
             setTimeout(() => setShowZoomLevelIndicator(false), 2000);
           }
           break;
-        case "0": // 0 key for toggling between object view and solar system view
+        case "0":
           if (orbitControlsRef.current) {
-            // Check if we're already zoomed in on an object
             if (isZoomedIn && zoomedBodyRef.current) {
-              // We're currently zoomed in, so zoom out to solar system view
-              
-              // Get the position of the sun as the center point
               const sunPosition = getPositionFromOrbit2(
                 sun.orbit,
                 simulationTime.getTime(),
                 simulationStartTime.getTime(),
               );
               
-              // Store the current body reference for potential zoom back in
               const currentZoomBody = zoomedBodyRef.current;
               
-              // Set target to sun
               orbitControlsRef.current.target.set(sunPosition.x, sunPosition.y, sunPosition.z);
               
-              // Calculate a position extremely far out to see the entire system
               const extremeDistance = sun.radius * sun.scale * 500;
               
-              // Position camera above the ecliptic plane
               orbitControlsRef.current.object.position.set(
                 sunPosition.x, 
                 sunPosition.y, 
                 sunPosition.z + extremeDistance
               );
               
-              // Update controls
               orbitControlsRef.current.update();
               
-              // Update state
               setIsZoomedIn(false);
               setZoomLevel("extreme");
               
-              // Store previous zoom state for toggling back
               zoomedBodyRef.current = currentZoomBody;
             } else {
-              // We're zoomed out, check if we have a previous body to zoom to
               if (zoomedBodyRef.current) {
-                // Zoom back to the previously tracked body
-                // Get the current position of the tracked body
                 const bodyPosition = getPositionFromOrbit2(
                   zoomedBodyRef.current.orbit,
                   simulationTime.getTime(),
                   simulationStartTime.getTime(),
                 );
                 
-                // Set target to the body
                 orbitControlsRef.current.target.set(
                   bodyPosition.x, 
                   bodyPosition.y, 
                   bodyPosition.z
                 );
                 
-                // Calculate ideal distance based on object size
                 const zoomMultiplier = zoomedBodyRef.current.name === "Sun" ? 10 : 3;
                 const idealDistance =
                   zoomedBodyRef.current.radius *
                   zoomedBodyRef.current.scale *
                   zoomMultiplier;
                 
-                // Calculate position above the body
                 orbitControlsRef.current.object.position.set(
                   bodyPosition.x, 
                   bodyPosition.y, 
                   bodyPosition.z + idealDistance
                 );
                 
-                // Update controls
                 orbitControlsRef.current.update();
                 
-                // Update state
-                setIsZoomedIn(true);
-                setZoomLevel("normal");
-                setIsWideView(false); // Explicitly hide the Sun when zoomed in
-                
-                // Start the tracking animation
                 isZoomingRef.current = true;
                 zoomStartTimeRef.current = performance.now();
               } else if (selectedBody) {
-                // No previous body but we have a selected body, zoom to it
                 zoomedBodyRef.current = selectedBody;
                 setIsZoomedIn(true);
-                setIsWideView(false); // Explicitly hide the Sun when zoomed in
+                setIsWideView(false);
                 
-                // Start the tracking animation
                 isZoomingRef.current = true;
                 zoomStartTimeRef.current = performance.now();
                 
@@ -291,34 +241,28 @@ function App() {
               }
             }
             
-            // Show zoom level indicator briefly
             setShowZoomLevelIndicator(true);
             setTimeout(() => setShowZoomLevelIndicator(false), 2000);
           }
           break;
-        case "-": // - key for zoom in
-        case "_": // _ key for zoom in
+        case "-":
+        case "_":
           if (orbitControlsRef.current) {
-            // Get current controls position
             const currentPos = orbitControlsRef.current.object.position.clone();
             const currentTarget = orbitControlsRef.current.target.clone();
             
-            // Calculate direction vector (normalized)
             const direction = new Vector3()
               .subVectors(currentPos, currentTarget)
               .normalize();
             
-            // Move closer in that direction (half current distance)
             const distance = currentPos.distanceTo(currentTarget) * 0.5;
             orbitControlsRef.current.object.position.copy(
               currentTarget.clone().add(direction.multiplyScalar(distance))
             );
             
-            // Update controls
             orbitControlsRef.current.update();
             setZoomLevel("normal");
             
-            // Show zoom level indicator briefly
             setShowZoomLevelIndicator(true);
             setTimeout(() => setShowZoomLevelIndicator(false), 2000);
           }
@@ -520,35 +464,29 @@ function App() {
 
   // Update the zoom animation effect
   useEffect(() => {
-    // Only run if we're actually zooming or tracking a body
     if (!isZoomingRef.current && !(isZoomedIn && zoomedBodyRef.current)) {
       return;
     }
 
     let animationFrameId: number;
     let lastUpdateTime = performance.now();
-    const UPDATE_INTERVAL = 1000 / 60; // Target 60fps
+    const UPDATE_INTERVAL = 1000 / 60;
 
     const animate = (currentTime: number) => {
-      // Calculate delta time since last update
       const deltaTime = currentTime - lastUpdateTime;
 
-      // Only update if enough time has passed
       if (deltaTime >= UPDATE_INTERVAL) {
         if (!orbitControlsRef.current) {
           console.log("Missing refs for zoom animation");
           return;
         }
 
-        // Calculate animation progress (0 to 1) over 1 second
         const elapsedTime = (currentTime - zoomStartTimeRef.current) / 1000;
-        const progress = Math.min(elapsedTime, 1); // Clamp to 1
+        const progress = Math.min(elapsedTime, 1);
 
-        // Use easing function for smooth animation
         const easedProgress = easeInOutCubic(progress);
 
         if (isZoomedIn && zoomedBodyRef.current) {
-          // Get the current position of the tracked body
           const currentBodyPosition = getPositionFromOrbit2(
             zoomedBodyRef.current.orbit,
             simulationTime.getTime(),
@@ -560,32 +498,27 @@ function App() {
             currentBodyPosition.z,
           );
 
-          // During zoom animation
           orbitControlsRef.current.target.lerpVectors(
             orbitControlsRef.current.target.clone(),
             updatedTargetPosition,
             easedProgress,
           );
           
-          // Use a larger multiplier for the Sun to ensure we're outside it
           const zoomMultiplier = zoomedBodyRef.current.name === "Sun" ? 10 : 3;
           const idealDistance =
             zoomedBodyRef.current.radius *
             zoomedBodyRef.current.scale *
             zoomMultiplier;
 
-          // Get the direction vector from camera to the target
           const camera = orbitControlsRef.current.object;
           const direction = new Vector3()
             .subVectors(camera.position, updatedTargetPosition)
             .normalize();
 
-          // Calculate the desired camera position based on ideal distance
           const targetCameraPosition = updatedTargetPosition
             .clone()
             .add(direction.multiplyScalar(idealDistance));
 
-          // Move the camera to the ideal position
           orbitControlsRef.current.object.position.lerpVectors(
             orbitControlsRef.current.object.position.clone(),
             targetCameraPosition,
@@ -596,35 +529,29 @@ function App() {
           initialCameraPositionRef.current &&
           initialTargetRef.current
         ) {
-          // Get Earth's current position
           const earthPosition = getPositionFromOrbit2(
             earth.orbit,
             simulationTime.getTime(),
             simulationStartTime.getTime(),
           );
           
-          // Calculate zoom out distance as 13x Earth's radius
           const zoomOutDistance = earth.radius * earth.scale * 13;
           
-          // Get current camera position and target
           const currentPos = orbitControlsRef.current.object.position;
           const currentTarget = orbitControlsRef.current.target;
 
-          // Calculate target position relative to Earth
           const targetPosition = new Vector3(
             earthPosition.x,
             earthPosition.y,
             earthPosition.z + zoomOutDistance
           );
 
-          // Lerp the camera position
           orbitControlsRef.current.object.position.lerpVectors(
             currentPos,
             targetPosition,
             easedProgress,
           );
 
-          // Smoothly move target to Earth's position
           orbitControlsRef.current.target.lerpVectors(
             currentTarget,
             new Vector3(earthPosition.x, earthPosition.y, earthPosition.z),
@@ -632,18 +559,14 @@ function App() {
           );
         }
 
-        // Force update the controls
         orbitControlsRef.current.update();
 
-        // If animation is complete
         if (progress >= 1) {
           isZoomingRef.current = false;
 
-          // If we're zoomed out, stop the tracking and clear references
           if (!isZoomedIn) {
             zoomedBodyRef.current = null;
             zoomTargetRef.current = null;
-            // Update the initial position reference to current position
             if (orbitControlsRef.current) {
               initialCameraPositionRef.current =
                 orbitControlsRef.current.object.position.clone();
@@ -656,24 +579,20 @@ function App() {
         lastUpdateTime = currentTime;
       }
 
-      // Continue animation
       animationFrameId = requestAnimationFrame(animate);
     };
 
-    // Start animation loop
     animationFrameId = requestAnimationFrame(animate);
 
-    // Clean up animation frame on component unmount or when dependencies change
     return () => {
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isZoomedIn, selectedBody]); // Only depend on these values, not simulationTime
+  }, [isZoomedIn, selectedBody]);
 
   // Add camera tracking effect for selected/zoomed objects
   useEffect(() => {
-    // Only track if zoomed in and we have a body to track
     if (!isZoomedIn || !zoomedBodyRef.current || !orbitControlsRef.current) {
       return;
     }
@@ -683,57 +602,48 @@ function App() {
     const trackObject = () => {
       if (!zoomedBodyRef.current || !orbitControlsRef.current) return;
       
-      // Get the current position of the tracked body
       const currentBodyPosition = getPositionFromOrbit2(
         zoomedBodyRef.current.orbit,
         simulationTime.getTime(),
         simulationStartTime.getTime(),
       );
       
-      // Update the orbit controls target to follow the object
       orbitControlsRef.current.target.set(
         currentBodyPosition.x,
         currentBodyPosition.y,
         currentBodyPosition.z
       );
       
-      // Get the direction from camera to target
       const camera = orbitControlsRef.current.object;
       const direction = new Vector3()
         .subVectors(camera.position, orbitControlsRef.current.target)
         .normalize();
       
-      // Calculate ideal distance based on object size
       const zoomMultiplier = zoomedBodyRef.current.name === "Sun" ? 10 : 3;
       const idealDistance =
         zoomedBodyRef.current.radius *
         zoomedBodyRef.current.scale *
         zoomMultiplier;
       
-      // Move camera to maintain constant distance while following
       camera.position.copy(
         orbitControlsRef.current.target.clone().add(
           direction.multiplyScalar(idealDistance)
         )
       );
       
-      // Update the controls
       orbitControlsRef.current.update();
       
-      // Continue tracking
       animationFrameId = requestAnimationFrame(trackObject);
     };
     
-    // Start tracking
     animationFrameId = requestAnimationFrame(trackObject);
     
-    // Clean up on unmount or when dependencies change
     return () => {
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isZoomedIn, zoomedBodyRef.current, simulationTime]); // Include simulationTime to update on time changes
+  }, [isZoomedIn, zoomedBodyRef.current, simulationTime]);
 
   // Easing function for smooth animation
   const easeInOutCubic = (t: number): number => {
@@ -746,26 +656,21 @@ function App() {
       return;
     }
 
-    // Toggle between zoomed in and out states
     const newZoomState = !isZoomedIn;
     setIsZoomedIn(newZoomState);
 
-    // If zooming in, we need a selected body
     if (newZoomState && !selectedBody) {
       console.log("Can't zoom in: no selected body");
       return;
     }
 
-    // Store the selected body for tracking during animation
     if (newZoomState) {
       zoomedBodyRef.current = selectedBody;
     }
     
-    // Start the zoom animation
     isZoomingRef.current = true;
     zoomStartTimeRef.current = performance.now();
 
-    // Create zoom visual indicator
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
 
@@ -778,13 +683,11 @@ function App() {
 
     setShowZoomIndicator(true);
 
-    // Hide indicator after animation completes
     setTimeout(() => {
       setShowZoomIndicator(false);
     }, 1000);
   };
 
-  // Track camera distance to determine when to show sun
   useEffect(() => {
     if (!orbitControlsRef.current) return;
 
@@ -793,21 +696,16 @@ function App() {
       const target = orbitControlsRef.current?.target;
       
       if (camera && target) {
-        // Get the distance from the camera to the center
         const distance = camera.position.distanceTo(target);
         
-        // Threshold for showing the sun (when zoomed out very far)
         const sunVisibilityThreshold = sun.radius * sun.scale * 50;
         
-        // Update state based on distance
         setIsWideView(distance > sunVisibilityThreshold);
       }
     };
 
-    // Check initially
     checkCameraDistance();
 
-    // Setup event listener for camera change
     const controls = orbitControlsRef.current;
     controls.addEventListener('change', checkCameraDistance);
 
@@ -824,37 +722,28 @@ function App() {
       const camera = orbitControlsRef.current.object;
       if (!camera) return;
 
-      // Function to calculate screen position from world position
       const calculateScreenPosition = (worldPos: { x: number, y: number, z: number }) => {
-        // Create Vector3 from the position
         const vector = new THREE.Vector3(worldPos.x, worldPos.y, worldPos.z);
         
-        // Project to screen coordinates
         const widthHalf = window.innerWidth / 2;
         const heightHalf = window.innerHeight / 2;
         
-        // Clone the vector to avoid modifying the original
         const screenPosition = vector.clone();
         
-        // Project the 3D position to screen space
         screenPosition.project(camera);
         
-        // Convert to CSS coordinates
         const x = (screenPosition.x * widthHalf) + widthHalf;
         const y = -(screenPosition.y * heightHalf) + heightHalf;
         
         return { x, y };
       };
 
-      // Get the current time values for calculations
       const currentTime = simulationTime.getTime();
       const startTime = simulationStartTime.getTime();
 
-      // Update Sun position
       const sunPosition = getPositionFromOrbit2(sun.orbit, currentTime, startTime);
       setSunScreenPosition(calculateScreenPosition(sunPosition));
       
-      // Update all planet positions
       const newPlanetPositions = {
         Mercury: calculateScreenPosition(getPositionFromOrbit2(mercury.orbit, currentTime, startTime)),
         Venus: calculateScreenPosition(getPositionFromOrbit2(venus.orbit, currentTime, startTime)),
@@ -865,13 +754,11 @@ function App() {
         Saturn: calculateScreenPosition(getPositionFromOrbit2(saturn.orbit, currentTime, startTime)),
         Uranus: calculateScreenPosition(getPositionFromOrbit2(uranus.orbit, currentTime, startTime)),
         Neptune: calculateScreenPosition(getPositionFromOrbit2(neptune.orbit, currentTime, startTime)),
-        Spaceship: calculateScreenPosition(getPositionFromOrbit2(spaceship.orbit, currentTime, startTime))
       };
       
       setPlanetScreenPositions(newPlanetPositions);
     };
 
-    // Set up an animation frame loop to continuously update positions
     let animationFrameId: number;
     const animate = () => {
       updateCelestialPositions();
@@ -891,13 +778,11 @@ function App() {
     THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
   }, []);
 
-  // Calculate maneuver node scale based on camera distance
   useEffect(() => {
     if (orbitControlsRef.current && maneuverNodes.length > 0) {
       const camera = orbitControlsRef.current.object;
       const nodePosition = maneuverNodes[0].position;
       const distance = camera.position.distanceTo(nodePosition);
-      // Simplified scale calculation
       const scale = Math.pow(distance, 0.6) / 5;
       setManeuverNodeScale(scale);
     }
@@ -905,7 +790,6 @@ function App() {
 
     return (
         <div style={{ width: '100vw', height: '100vh', background: '#000', position: 'relative' }}>
-            {/* Single Canvas for all 3D content */}
             <div style={{ width: '100%', height: '100%' }}>
                 <Canvas 
                     camera={{ 
@@ -923,7 +807,6 @@ function App() {
                         }
                     }}
                 >
-                    {/* Background stars - positioned far behind everything */}
                     <Stars 
                         radius={sun.radius * sun.scale * 10000} 
                         depth={50} 
@@ -934,14 +817,6 @@ function App() {
                         speed={1}
                     />
 
-          {/* <Spaceship
-            body={spaceship}
-            currentTime={simulationTime}
-            isSelected={selectedBody?.name === spaceship.name}
-            onSelect={handleSelectBody}
-          /> */}
-
-          {/* Celestial bodies */}
           {planetData.map((planet) => {
             const body = {
               ...planet,
@@ -971,22 +846,13 @@ function App() {
             }
           })}
 
-          {/* <OrbitLine2
-            orbit={saturn.orbit}
-            color={saturn.color}
-            onOrbitClick={handleOrbitClick}
-            maneuverNodes={maneuverNodes}
-            selectedManeuver={selectedManeuver}
-          />*/}
-
-          {/* Render all maneuver nodes */}
           {maneuverNodes.map((node) => (
             <ManeuverNode
               key={node.id}
               id={node.id}
               position={node.position}
               deltaV={node.deltaV}
-              scale={maneuverNodeScale} // Removed the multiplier since we're using a better scale calculation
+              scale={maneuverNodeScale}
               onUpdate={handleManeuverUpdate}
               setIsDragging={setIsDraggingHandle}
               isSelected={selectedManeuver === node.id}
@@ -994,7 +860,6 @@ function App() {
             />
           ))}
 
-          {/* Controls */}
           <OrbitControls
             enablePan={!isDraggingHandle}
             enableZoom={!isDraggingHandle}
@@ -1003,8 +868,8 @@ function App() {
             ref={orbitControlsRef}
             makeDefault
             minDistance={1}
-            maxDistance={sun.radius * sun.scale * 10000} // Increased from 100 to 1000 for extreme zoom out
-            zoomSpeed={2.5} // Increased from 2.0 to 2.5 for even faster zooming
+            maxDistance={sun.radius * sun.scale * 10000}
+            zoomSpeed={2.5}
             rotateSpeed={1}
             panSpeed={0.8}
             dampingFactor={0.1}
@@ -1012,7 +877,6 @@ function App() {
         </Canvas>
       </div>
 
-      {/* Time controls with new stylish UI */}
       <div className="time-controls" ref={timeControlsRef}>
         <div className="time-label">Simulation Time</div>
         <div className="time-value">{simulationTime.toLocaleString()}</div>
@@ -1084,7 +948,6 @@ function App() {
         </div>
       </div>
 
-      {/* Debug info */}
       <div
         style={{
           position: "absolute",
@@ -1112,10 +975,8 @@ function App() {
           : "0 m/s"}
       </div>
 
-      {/* Info panel */}
       <InfoPanel selectedBody={selectedBody} onClose={handleCloseInfoPanel} />
 
-      {/* Orbit Action Prompt */}
       <PromptMenu
         isOpen={prompt.isOpen}
         position={prompt.position}
@@ -1124,7 +985,6 @@ function App() {
         onButtonClick={handlePromptButtonClick}
       />
 
-      {/* Zoom level indicator */}
       <div
         className={`zoom-level-indicator ${showZoomLevelIndicator ? "visible" : ""} ${zoomLevel}`}
       >
@@ -1136,7 +996,6 @@ function App() {
             : "Maximum"}
       </div>
 
-      {/* Zoom shortcuts helper */}
       <div
         style={{
           position: "absolute",
@@ -1159,7 +1018,6 @@ function App() {
         <div>0 key: Toggle object/system view</div>
       </div>
 
-      {/* UI Elements */}
       {showZoomIndicator && (
         <div
           className={`zoom-indicator ${isZoomedIn ? "" : "zoom-out"}`}
@@ -1171,11 +1029,9 @@ function App() {
           }}
         />
       )}
-      {/* 2D Sun representation in system view */}
       {(isWideView || zoomLevel === "extreme") && (
         <>
           
-          {/* Sun */}
           <div 
             className={`sun-container ${selectedBody?.name === sun.name ? 'selected' : ''}`}
             style={{
@@ -1215,7 +1071,6 @@ function App() {
             </div>
           </div>
           
-          {/* Mercury */}
           <div 
             className={`planet-container ${selectedBody?.name === mercury.name ? 'selected' : ''}`}
             style={{
@@ -1232,7 +1087,6 @@ function App() {
             <div className="planet-label" onClick={() => handleSelectBody(mercury)}>Mercury</div>
           </div>
           
-          {/* Venus */}
           <div 
             className={`planet-container ${selectedBody?.name === venus.name ? 'selected' : ''}`}
             style={{
@@ -1249,7 +1103,6 @@ function App() {
             <div className="planet-label" onClick={() => handleSelectBody(venus)}>Venus</div>
           </div>
           
-          {/* Earth */}
           <div 
             className={`planet-container ${selectedBody?.name === earth.name ? 'selected' : ''}`}
             style={{
@@ -1266,7 +1119,6 @@ function App() {
             <div className="planet-label" onClick={() => handleSelectBody(earth)}>Earth</div>
           </div>
           
-          {/* Moon */}
           <div 
             className={`planet-container ${selectedBody?.name === moon.name ? 'selected' : ''}`}
             style={{
@@ -1283,7 +1135,6 @@ function App() {
             <div className="planet-label" onClick={() => handleSelectBody(moon)}>Moon</div>
           </div>
           
-          {/* Mars */}
           <div 
             className={`planet-container ${selectedBody?.name === mars.name ? 'selected' : ''}`}
             style={{
@@ -1300,7 +1151,6 @@ function App() {
             <div className="planet-label" onClick={() => handleSelectBody(mars)}>Mars</div>
           </div>
           
-          {/* Jupiter */}
           <div 
             className={`planet-container ${selectedBody?.name === jupiter.name ? 'selected' : ''}`}
             style={{
@@ -1317,7 +1167,6 @@ function App() {
             <div className="planet-label" onClick={() => handleSelectBody(jupiter)}>Jupiter</div>
           </div>
 
-          {/* Saturn Rings */}
           <div 
             style={{
               position: "absolute",
@@ -1332,7 +1181,6 @@ function App() {
               zIndex: 890
             }}
           />
-          {/* Saturn */}
           <div 
             className={`planet-container ${selectedBody?.name === saturn.name ? 'selected' : ''}`}
             style={{
@@ -1349,7 +1197,6 @@ function App() {
             <div className="planet-label" onClick={() => handleSelectBody(saturn)}>Saturn</div>
           </div>
           
-          {/* Uranus */}
           <div 
             className={`planet-container ${selectedBody?.name === uranus.name ? 'selected' : ''}`}
             style={{
@@ -1366,7 +1213,6 @@ function App() {
             <div className="planet-label" onClick={() => handleSelectBody(uranus)}>Uranus</div>
           </div>
           
-          {/* Neptune */}
           <div 
             className={`planet-container ${selectedBody?.name === neptune.name ? 'selected' : ''}`}
             style={{
@@ -1381,23 +1227,6 @@ function App() {
           >
             <div className="planet-point neptune-point" onClick={() => handleSelectBody(neptune)}></div>
             <div className="planet-label" onClick={() => handleSelectBody(neptune)}>Neptune</div>
-          </div>
-          
-          {/* Spaceship */}
-          <div 
-            className={`planet-container ${selectedBody?.name === spaceship.name ? 'selected' : ''}`}
-            style={{
-              position: "absolute",
-              left: `${planetScreenPositions.Spaceship.x}px`,
-              top: `${planetScreenPositions.Spaceship.y}px`,
-              transform: "translate(-50%, -50%)",
-              width: "28px",
-              height: "28px"
-            }}
-            onClick={() => handleSelectBody(spaceship)}
-          >
-            <div className="planet-point spaceship-point" onClick={() => handleSelectBody(spaceship)}></div>
-            <div className="planet-label" onClick={() => handleSelectBody(spaceship)}>Spaceship</div>
           </div>
         </>
       )}
