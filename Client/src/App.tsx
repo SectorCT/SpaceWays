@@ -56,6 +56,7 @@ const saturn = bodies.find((body) => body.name === "Saturn")!;
 const uranus = bodies.find((body) => body.name === "Uranus")!;
 const neptune = bodies.find((body) => body.name === "Neptune")!;
 
+
 // Create a dummy spaceship object for the UI references
 const spaceship = {
   name: "Spaceship",
